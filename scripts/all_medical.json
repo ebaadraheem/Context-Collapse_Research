@@ -1,0 +1,2032 @@
+[
+  {
+    "script_id": "medical_01",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "Our clinic is preparing a HIPAA compliance review for a patient-record access workflow.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The clinic stores all patient consent forms in an encrypted SharePoint repository.",
+            "tier": "structural"
+          },
+          {
+            "id": "F2",
+            "text": "Only compliance officers and attending physicians can approve external medical-record disclosures.",
+            "tier": "structural"
+          },
+          {
+            "id": "F3",
+            "text": "No patient records may be transmitted through personal email accounts.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "The cardiology department requires dual verification before releasing imaging records.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "A regional insurance audit is scheduled for June 18.",
+            "tier": "context"
+          },
+          {
+            "id": "F6",
+            "text": "The clinic recently integrated a new Epic EHR export module.",
+            "tier": "context"
+          },
+          {
+            "id": "F7",
+            "text": "Dr. Malik is temporarily covering patient-disclosure approvals this month.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The retention period for signed consent forms was updated from five years to seven years.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "The workflow should include authenticated patient requests, internal approval routing, audit logging, encrypted storage access, and secure delivery channels aligned with HIPAA disclosure requirements."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "We also need guidance on documenting external requests from insurance providers seeking lab records."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "Each request should capture the requesting organization, legal basis for disclosure, patient authorization status, timestamps, approver identity, and the exact record categories released."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "Before the audit team arrives, where are the signed authorization documents currently being maintained?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "The clinic stores all patient consent forms in an encrypted SharePoint repository.",
+          "Encrypted SharePoint repository."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "You mentioned that the signed consent forms are stored in an encrypted SharePoint repository."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "We are updating the release-of-information SOP for imaging requests from cardiology patients."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The SOP should explicitly require identity verification, patient authorization review, approval logging, and dual verification prior to releasing cardiology imaging records."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "The compliance office wants a short checklist for staff responding to external disclosure requests."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "When staff prepare imaging files for outside specialists, what additional safeguard applies specifically to cardiology?",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "The cardiology department requires dual verification before releasing imaging records.",
+          "Dual verification is required before cardiology imaging records are released."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "Cardiology imaging disclosures require dual verification before the records can be released externally."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "We are evaluating whether employees can send limited patient summaries through personal email during emergencies."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "That should remain prohibited. Patient records should only be transmitted through approved secure communication systems and never through personal email accounts."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The IT department is preparing migration notes for the records platform integration."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "Which EHR-related upgrade was recently added to support exports and disclosures?",
+        "is_recall": true,
+        "target_fact_id": "F6",
+        "ground_truth": [
+          "The clinic recently integrated a new Epic EHR export module.",
+          "A new Epic EHR export module was recently integrated."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The clinic recently integrated a new Epic EHR export module."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "We need to define who is authorized to approve disclosures requested by outside legal representatives."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "External medical-record disclosures can only be approved by compliance officers and attending physicians according to the workflow structure you described."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "The records team is revising document-retention guidance for signed consent forms."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "For archive planning, how long are completed authorization forms expected to remain on file now?",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "The retention period for signed consent forms was updated from five years to seven years.",
+          "Seven years."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The updated retention period for signed consent forms is now seven years."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "We are drafting temporary staffing documentation for approval coverage during the current month."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "The documentation should identify the temporary approver, define escalation procedures, and preserve audit trails for all disclosure decisions."
+      },
+      {
+        "turn": 24,
+        "role": "user",
+        "content": "The audit binder also needs a section summarizing disclosure authority assignments."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "While the regular approver is unavailable, who has been handling disclosure approvals this month?",
+        "is_recall": true,
+        "target_fact_id": "F7",
+        "ground_truth": [
+          "Dr. Malik is temporarily covering patient-disclosure approvals this month.",
+          "Dr. Malik."
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_02",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "Our hospital network is reviewing patient-access procedures for compliance and audit readiness.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "All patient access logs are archived in a secure AWS environment with quarterly backups.",
+            "tier": "structural"
+          },
+          {
+            "id": "F2",
+            "text": "Behavioral health records require approval from both the privacy office and the treating psychiatrist before release.",
+            "tier": "structural"
+          },
+          {
+            "id": "F3",
+            "text": "Staff are prohibited from downloading patient files onto personal USB devices.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "Telehealth recordings cannot be shared externally without written patient consent.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "A state compliance inspection is planned for July 2.",
+            "tier": "context"
+          },
+          {
+            "id": "F6",
+            "text": "The hospital recently adopted Okta-based single sign-on for EHR access.",
+            "tier": "context"
+          },
+          {
+            "id": "F7",
+            "text": "Nurse Patel is coordinating release-of-information requests during the director's leave.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The legal department changed the breach-notification review window from 72 hours to 48 hours.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "Your review should include authentication controls, disclosure authorization workflows, consent management, audit logging, and breach-response timelines."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "We are standardizing procedures for patients requesting copies of telehealth consultations."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "The process should verify patient identity, confirm consent status, document approvals, and ensure secure transmission of any recordings."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "For the infrastructure summary, where are the access-history records currently being archived?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "All patient access logs are archived in a secure AWS environment with quarterly backups.",
+          "A secure AWS environment with quarterly backups."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The patient access logs are archived in a secure AWS environment with quarterly backups."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "We also need language covering restrictions on local file storage by employees."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The policy should clearly prohibit downloading patient files onto personal USB devices or other unmanaged storage media."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "The psychiatry department requested clarification on disclosure approvals for behavioral health cases."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "When behavioral health charts are requested externally, whose sign-off is required before anything leaves the system?",
+        "is_recall": true,
+        "target_fact_id": "F2",
+        "ground_truth": [
+          "Behavioral health records require approval from both the privacy office and the treating psychiatrist before release.",
+          "Approval from the privacy office and the treating psychiatrist."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "Behavioral health records require approval from both the privacy office and the treating psychiatrist before release."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "The security team is documenting the authentication changes introduced this quarter."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "You should note the transition to Okta-based single sign-on for EHR access and include details about centralized authentication logging."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "We are reviewing policies involving external sharing of virtual consultation recordings."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "Before telehealth sessions can be forwarded outside the organization, which prerequisite needs to be satisfied?",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "Telehealth recordings cannot be shared externally without written patient consent.",
+          "Written patient consent is required."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "External sharing of telehealth recordings requires written patient consent."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "The compliance office is also revising incident-response timelines after legal review."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "The updated timeline should be reflected consistently across breach-response procedures, escalation protocols, and staff training materials."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "We are finalizing staffing coverage notes for release-of-information coordination."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "During the director's leave, who has been coordinating disclosure requests?",
+        "is_recall": true,
+        "target_fact_id": "F7",
+        "ground_truth": [
+          "Nurse Patel is coordinating release-of-information requests during the director's leave.",
+          "Nurse Patel."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "Nurse Patel is coordinating release-of-information requests during the director's leave."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "We also need the breach-management handbook updated before the state inspection."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "The handbook should reflect the revised review window, notification responsibilities, escalation contacts, and evidence-retention procedures."
+      },
+      {
+        "turn": 24,
+        "role": "user",
+        "content": "The executive team wants a concise compliance briefing for inspectors."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "For the revised breach-response process, what is the current review window now set to?",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "The legal department changed the breach-notification review window from 72 hours to 48 hours.",
+          "48 hours."
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_03",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "I need help organizing a malpractice dispute involving delayed stroke treatment at a regional hospital.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The patient arrived at Lakeview Regional Hospital on March 12, 2024.",
+            "tier": "context"
+          },
+          {
+            "id": "F2",
+            "text": "The plaintiff alleges a delayed diagnosis of ischemic stroke.",
+            "tier": "context"
+          },
+          {
+            "id": "F3",
+            "text": "All summaries must stay under 180 words.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "Do not mention settlement amounts in any draft.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "The defense expert is neurologist Dr. Helen Morris.",
+            "tier": "structural"
+          },
+          {
+            "id": "F6",
+            "text": "The emergency department timeline should always be presented chronologically.",
+            "tier": "structural"
+          },
+          {
+            "id": "F7",
+            "text": "The patient was initially reported as stable but later lost motor function in the left arm.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The radiology review status may change after external audit.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "The dispute centers on whether emergency staff failed to recognize stroke indicators quickly enough to initiate timely intervention. A chronological review should begin with triage, neurological observations, CT imaging requests, radiology interpretation, physician escalation, and eventual transfer decisions."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "Draft a concise outline for questioning the emergency physician about standard-of-care compliance during the first two hours after admission."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "Questioning should address triage timing, neurological assessment frequency, documentation of weakness symptoms, interpretation of stroke risk factors, communication with radiology, consultation timing with neurology, and reasons thrombolytic evaluation was delayed."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "Before I finalize the intake summary, which hospital handled the admission paperwork earlier in the file?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "Lakeview Regional Hospital",
+          "The patient arrived at Lakeview Regional Hospital."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The admission records identify Lakeview Regional Hospital as the receiving facility on the initial intake documentation."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "The plaintiff now argues that nursing staff failed to escalate worsening neurological symptoms quickly enough. Update the dispute framing."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The revised dispute alleges both delayed physician recognition of stroke indicators and inadequate nursing escalation after deterioration in motor function was documented. The case now examines whether communication failures contributed to treatment delay."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "Prepare a short paragraph explaining how expert testimony could establish deviation from accepted emergency stroke protocols."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "I need the neurologist name again for the expert witness disclosure section.",
+        "is_recall": true,
+        "target_fact_id": "F5",
+        "ground_truth": [
+          "Dr. Helen Morris",
+          "The defense expert is neurologist Dr. Helen Morris."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "The defense expert identified in the disclosure materials is neurologist Dr. Helen Morris."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "Summarize how the defense may argue that the patient's symptoms were initially ambiguous rather than clearly indicative of stroke."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "The defense may argue that early symptoms appeared nonspecific, vital signs were initially stable, and neurological deficits evolved gradually. They may also contend that providers acted reasonably based on the information available during the initial evaluation window."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The external audit now confirmed that the first CT scan interpretation missed early ischemic indicators. Reflect that change in the case notes."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "For formatting consistency, how should the emergency timeline be organized in the memorandum?",
+        "is_recall": true,
+        "target_fact_id": "F6",
+        "ground_truth": [
+          "Chronologically",
+          "The emergency department timeline should always be presented chronologically."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The memorandum should present the emergency department timeline chronologically, beginning with triage and continuing through imaging, escalation, and transfer decisions."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "Create a concise argument supporting causation between delayed intervention and permanent neurological impairment."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "The causation argument can assert that delayed recognition and escalation postponed stroke-directed treatment during a critical therapeutic window, increasing the likelihood of irreversible neurological injury and long-term motor impairment."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "The nursing notes were amended to clarify that weakness in the left arm became pronounced shortly before transfer. Integrate that update carefully."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "One drafting rule from the beginning is slipping my mind. Which financial topic was excluded from the summaries?",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "Settlement amounts",
+          "Do not mention settlement amounts in any draft."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The drafting instructions specify that settlement amounts should not be mentioned in any summary or memorandum."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "Draft a short cross-examination angle challenging the reliability of the original radiology interpretation."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Cross-examination could focus on whether the radiologist followed accepted stroke imaging review standards, whether subtle ischemic indicators were overlooked, and how the later audit contradicted the initial interpretation."
+      },
+      {
+        "turn": 24,
+        "role": "assistant",
+        "content": "The case file now reflects allegations involving delayed diagnosis, insufficient escalation, disputed imaging interpretation, and expert disagreement regarding compliance with emergency stroke protocols."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "For the procedural history section, which month and year marked the patient's arrival?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "March 2024",
+          "March 12, 2024"
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_04",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "I am preparing materials for a malpractice dispute involving alleged surgical negligence after a cardiac procedure.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The surgery occurred at Northbridge Medical Center.",
+            "tier": "context"
+          },
+          {
+            "id": "F2",
+            "text": "The plaintiff claims postoperative bleeding was not addressed promptly.",
+            "tier": "context"
+          },
+          {
+            "id": "F3",
+            "text": "Every written response must remain professionally neutral.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "Avoid speculative language about physician motives.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "Cardiothoracic surgeon Dr. Samuel Reed is the primary expert witness.",
+            "tier": "structural"
+          },
+          {
+            "id": "F6",
+            "text": "All procedural events must be referenced using 24-hour time format.",
+            "tier": "structural"
+          },
+          {
+            "id": "F7",
+            "text": "The ICU staffing ratio changed during overnight monitoring.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The anesthesia documentation may be revised after peer review.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "The dispute appears focused on whether postoperative monitoring and escalation met accepted standards after the cardiac procedure. Key areas include ICU observations, bleeding indicators, communication between nursing staff and surgeons, and timing of re-intervention."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "Provide a concise outline for deposing the attending surgeon regarding postoperative decision-making."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "The deposition outline should address postoperative assessments, interpretation of drainage output, communication with ICU staff, thresholds for ordering imaging or reoperation, and documentation of clinical deterioration."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "I need to verify the facility name before circulating the chronology draft.",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "Northbridge Medical Center",
+          "The surgery occurred at Northbridge Medical Center."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The operative records identify Northbridge Medical Center as the surgical facility."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "The plaintiff now alleges that abnormal drainage measurements were documented hours before surgical reassessment. Update the dispute summary."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The revised summary alleges that clinical indicators of postoperative bleeding were documented before reassessment occurred, raising questions about whether escalation and intervention were unreasonably delayed."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "Write a short explanation of how expert testimony may establish breach of surgical standard of care in this matter."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "Which specialist was retained as the lead expert for the defense review?",
+        "is_recall": true,
+        "target_fact_id": "F5",
+        "ground_truth": [
+          "Dr. Samuel Reed",
+          "Cardiothoracic surgeon Dr. Samuel Reed"
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "The retained expert identified in the defense materials is cardiothoracic surgeon Dr. Samuel Reed."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "Summarize the likely defense position that postoperative findings did not immediately justify return to surgery."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "The defense may argue that drainage levels and vital signs initially fell within acceptable postoperative ranges and that clinicians exercised reasonable judgment before determining reoperation was necessary."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "Peer review has now identified inconsistencies in portions of the anesthesia record. Incorporate that update into the procedural notes."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "For the timeline appendix, what clock format was required for documenting events?",
+        "is_recall": true,
+        "target_fact_id": "F6",
+        "ground_truth": [
+          "24-hour time format",
+          "All procedural events must be referenced using 24-hour time format."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The appendix should present all procedural and monitoring events using 24-hour time format for consistency."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "Prepare a concise causation statement linking delayed intervention to the patient's prolonged recovery."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "The causation theory may assert that delayed recognition and management of postoperative bleeding increased physiological stress, prolonged instability, and contributed to extended recovery and additional complications."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "Updated staffing logs show the ICU nurse-to-patient ratio worsened during overnight observation. Add that development carefully."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "One of the drafting limitations prohibited discussing provider intent. Which restriction was that?",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "Avoid speculative language about physician motives",
+          "Do not speculate about physician motives"
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The drafting guidance specifies avoiding speculative language regarding physician motives or intent."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "Draft a short cross-examination theme challenging the adequacy of overnight monitoring practices."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Cross-examination may focus on whether staffing levels, monitoring frequency, and escalation procedures were sufficient to detect worsening postoperative bleeding in a timely manner."
+      },
+      {
+        "turn": 24,
+        "role": "assistant",
+        "content": "The current dispute framework includes allegations of delayed response to bleeding indicators, disputed postoperative judgment, evolving documentation concerns, and disagreement over compliance with accepted surgical monitoring standards."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "Before I submit the expert packet, which complication was allegedly left untreated for too long after surgery?",
+        "is_recall": true,
+        "target_fact_id": "F2",
+        "ground_truth": [
+          "Postoperative bleeding",
+          "The plaintiff claims postoperative bleeding was not addressed promptly."
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_05",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "I need help organizing my insurance appeal workflow for a denied spinal surgery claim.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The patient policy requires all appeal letters to stay under 900 words.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F2",
+            "text": "The insurer is Horizon Peak Health.",
+            "tier": "context"
+          },
+          {
+            "id": "F3",
+            "text": "Every draft must include sections titled Medical Necessity, Prior Treatment History, and Requested Resolution.",
+            "tier": "structural"
+          },
+          {
+            "id": "F4",
+            "text": "The patient completed six months of physical therapy before surgery was recommended.",
+            "tier": "context"
+          },
+          {
+            "id": "F5",
+            "text": "The case reference number is HP-77821-A.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F6",
+            "text": "The preferred tone for all insurer communication is formal and non-accusatory.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F7",
+            "text": "The workflow uses a three-stage process: intake review, medical evidence review, and final submission.",
+            "tier": "structural"
+          },
+          {
+            "id": "F8",
+            "text": "The assigned utilization review physician changed from Dr. Levin to Dr. Shah last week.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "Understood. I will keep all drafts under 900 words, maintain a formal tone, and structure materials around the three workflow stages and required appeal sections."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "Create a checklist for the intake review stage focused on verifying denial codes, prior authorization history, and imaging reports."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "Checklist: verify denial code accuracy, confirm prior authorization submission dates, collect MRI and CT imaging reports, confirm therapy completion records, validate surgeon notes, and match all records to case HP-77821-A."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "The appeal summary is getting too long. Which limit are we supposed to stay within again?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "All appeal letters must stay under 900 words.",
+          "The policy requires appeal drafts to remain below 900 words."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The appeal letters should remain under 900 words to comply with the policy requirement."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "Draft a concise Medical Necessity section explaining why conservative treatment failed before surgery was proposed."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The patient completed six months of supervised physical therapy without meaningful improvement in pain, mobility, or neurological symptoms. Imaging and specialist evaluations subsequently supported the recommendation for surgical intervention due to persistent functional impairment."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "Update the workflow notes to reflect the current utilization review physician handling the case."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "I need the latest reviewer name before I send the fax cover sheet.",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "The assigned reviewer is now Dr. Shah.",
+          "The utilization review physician changed to Dr. Shah."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "The current utilization review physician is Dr. Shah."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "Prepare an outline for the final submission stage that includes attachments and escalation steps."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "Final submission outline: attach denial notice, physician recommendation, imaging reports, therapy documentation, and appeal letter; verify signatures; submit through insurer portal and fax; document timestamps; monitor acknowledgment response; escalate to external review if internal appeal is denied."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The insurer requested clearer headings in the appeal packet. Keep the structure compliant."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "Which exact section titles are supposed to appear in every appeal draft?",
+        "is_recall": true,
+        "target_fact_id": "F3",
+        "ground_truth": [
+          "Medical Necessity, Prior Treatment History, and Requested Resolution.",
+          "Each draft must include Medical Necessity, Prior Treatment History, and Requested Resolution."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "Every appeal draft should include the sections Medical Necessity, Prior Treatment History, and Requested Resolution."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "Generate a short Requested Resolution paragraph asking for reconsideration of the denial."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "We respectfully request reconsideration and reversal of the denial decision based on the submitted medical evidence, failed conservative treatment history, and specialist recommendations supporting the necessity of surgical intervention."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "Add the insurer details to the submission tracker and make sure the reviewer assignment is current."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "Before I finalize the tracker, which insurance company is handling this case?",
+        "is_recall": true,
+        "target_fact_id": "F2",
+        "ground_truth": [
+          "The insurer is Horizon Peak Health.",
+          "Horizon Peak Health is handling the claim."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The claim is being handled by Horizon Peak Health."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "Prepare a one-line note summarizing the patient's prior conservative treatment for the case log."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Patient completed six months of physical therapy without sufficient symptom improvement prior to surgical recommendation."
+      },
+      {
+        "turn": 24,
+        "role": "assistant",
+        "content": "All workflow documentation now reflects the current reviewer, insurer information, and required appeal structure."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "The submission form needs the reference identifier one more time before upload.",
+        "is_recall": true,
+        "target_fact_id": "F5",
+        "ground_truth": [
+          "The case reference number is HP-77821-A.",
+          "Use reference number HP-77821-A."
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_06",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "I need assistance managing a denied oncology medication authorization and preparing the appeal package.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The appeal packet must be submitted within 21 calendar days of denial.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F2",
+            "text": "The insurance provider is NorthRiver Care Alliance.",
+            "tier": "context"
+          },
+          {
+            "id": "F3",
+            "text": "Every appeal document must contain the headers Patient Background, Clinical Evidence, and Coverage Request.",
+            "tier": "structural"
+          },
+          {
+            "id": "F4",
+            "text": "The patient previously failed two formulary-approved medications due to adverse reactions.",
+            "tier": "context"
+          },
+          {
+            "id": "F5",
+            "text": "The authorization tracking number is NR-44092-Z.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F6",
+            "text": "Communications with the insurer should avoid emotional language and remain evidence-based.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F7",
+            "text": "The internal workflow is organized into verification, physician review, and appeal submission phases.",
+            "tier": "structural"
+          },
+          {
+            "id": "F8",
+            "text": "The assigned oncology reviewer changed from Dr. Patel to Dr. Moreno this month.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "I will follow the required workflow phases, maintain evidence-based communication, and preserve the required document structure for the appeal."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "List the tasks required during the verification phase before the oncologist signs the appeal."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "Verification tasks include confirming denial dates, checking prior authorization records, validating medication history, confirming adverse reaction documentation, and ensuring the tracking number matches all submitted forms."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "The filing deadline is close. How much time do we actually have to submit the packet?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "The appeal packet must be submitted within 21 calendar days of denial.",
+          "Submission is required within 21 days of the denial."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The appeal packet must be submitted within 21 calendar days after the denial date."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "Draft a Clinical Evidence paragraph summarizing why the requested medication is medically appropriate."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The requested oncology medication is medically appropriate because the patient experienced adverse reactions to two formulary-approved alternatives, limiting safe and effective treatment options. Current oncology recommendations and physician assessments support the requested therapy as the most suitable course of care."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "Update the reviewer assignment in the case management notes."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "Before the peer-to-peer call starts, who is the current oncology reviewer assigned to this file?",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "The current reviewer is Dr. Moreno.",
+          "The oncology reviewer changed to Dr. Moreno."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "The currently assigned oncology reviewer is Dr. Moreno."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "Prepare a checklist for the physician review phase with emphasis on adverse reaction evidence."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "Checklist: confirm physician signature, attach adverse reaction records, include laboratory data, verify medication timelines, summarize failed formulary therapies, and confirm supporting oncology guidelines are cited."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The insurer said the appeal formatting must stay consistent across all pages."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "Which section headers are mandatory for every appeal document in this case?",
+        "is_recall": true,
+        "target_fact_id": "F3",
+        "ground_truth": [
+          "Patient Background, Clinical Evidence, and Coverage Request.",
+          "Each document must include Patient Background, Clinical Evidence, and Coverage Request."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The mandatory headers are Patient Background, Clinical Evidence, and Coverage Request."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "Write a brief Coverage Request paragraph asking for approval of the non-formulary medication."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "We respectfully request approval of the prescribed non-formulary oncology medication based on documented adverse reactions to covered alternatives and the treating physician's assessment that the requested therapy is medically necessary."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "Add the insurer information to the escalation worksheet and confirm the payer name is accurate."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "I need the payer name for the escalation log before submission.",
+        "is_recall": true,
+        "target_fact_id": "F2",
+        "ground_truth": [
+          "The insurance provider is NorthRiver Care Alliance.",
+          "NorthRiver Care Alliance is the payer."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The payer for this case is NorthRiver Care Alliance."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "Create a concise note summarizing why formulary medications were unsuccessful."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Two formulary-approved medications were discontinued because the patient experienced documented adverse reactions that limited continued use."
+      },
+      {
+        "turn": 24,
+        "role": "assistant",
+        "content": "The appeal materials now include the updated reviewer assignment, required structure, and evidence summaries for submission."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "The upload portal is asking for the authorization identifier again before final confirmation.",
+        "is_recall": true,
+        "target_fact_id": "F5",
+        "ground_truth": [
+          "The authorization tracking number is NR-44092-Z.",
+          "Use tracking number NR-44092-Z."
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_07",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "We are drafting compliance procedures for a telehealth startup expanding into multiple states.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The platform stores patient records in AWS us-east-1.",
+            "tier": "structural"
+          },
+          {
+            "id": "F2",
+            "text": "Remote consultations must be logged within 12 hours.",
+            "tier": "structural"
+          },
+          {
+            "id": "F3",
+            "text": "Clinicians cannot prescribe controlled substances during a first video visit.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "Patient consent forms must be available in English and Spanish.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "The company currently operates in Texas, Arizona, and Nevada.",
+            "tier": "context"
+          },
+          {
+            "id": "F6",
+            "text": "A recent audit identified weak MFA adoption among contractors.",
+            "tier": "context"
+          },
+          {
+            "id": "F7",
+            "text": "The compliance lead may revise retention policies next quarter.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The organization is considering onboarding pediatric specialists.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "The first priority should be a state-by-state review of telehealth licensure rules, consent requirements, prescribing limitations, and HIPAA security controls. I also recommend documenting escalation paths for cross-state consultations."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "We need guidance for providers treating traveling patients temporarily located outside their home state during a virtual visit."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "The provider generally needs authorization in the state where the patient is physically located at the time of treatment. The workflow should require verification of patient location before every session and prevent unauthorized scheduling."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "Before we finalize the cloud security checklist, which AWS region is handling the medical records right now?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "AWS us-east-1",
+          "Patient records are stored in AWS us-east-1"
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The records are currently stored in AWS us-east-1. Access logging and encryption validation should be reviewed there before expansion."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "We also need a policy for remote patient consent during emergency consultations after normal business hours."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "Emergency telehealth encounters should still capture documented consent unless a state-specific emergency exception applies. The intake flow should timestamp verbal consent and attach it to the encounter record."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "Our legal team wants a recommendation for handling multilingual consent disclosures for elderly patients."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "For the updated onboarding portal, which languages already need to be supported for the consent forms?",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "English and Spanish",
+          "Consent forms must be available in English and Spanish"
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "The consent forms currently need to be available in English and Spanish. Additional accessibility reviews for elderly patients would still be advisable."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "We are designing an automated compliance alert for clinicians attempting to prescribe restricted medication during initial virtual evaluations."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "The platform should block prescribing workflows for controlled substances during first-time video visits and require a supervisory review when a clinician attempts to bypass the restriction."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The security team also asked whether contractor authentication controls should be prioritized before adding more providers."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "Which weakness did the recent audit highlight around contractor access security?",
+        "is_recall": true,
+        "target_fact_id": "F6",
+        "ground_truth": [
+          "Weak MFA adoption among contractors",
+          "The audit identified weak MFA adoption among contractors"
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The audit identified weak MFA adoption among contractors. Mandatory multi-factor enrollment and quarterly access reviews should be enforced before scaling provider access."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "We are drafting a retention schedule for telehealth recordings and consultation logs across multiple jurisdictions."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "The retention schedule should separate clinical records, billing artifacts, and audit logs because different states impose different minimum retention periods. A legal review process should also exist for future revisions."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "Another concern is whether pediatric telehealth services would require different parental consent procedures."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "Which specialist category is the organization considering adding to the platform later on?",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "Pediatric specialists",
+          "The organization is considering onboarding pediatric specialists"
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The organization is considering onboarding pediatric specialists, so parental authorization workflows and guardian identity verification should be included in future planning."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "We also need standardized documentation timing rules for providers completing telehealth visit summaries."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "The workflow should automatically remind providers to finalize and log consultations within the required reporting window and escalate overdue documentation to compliance supervisors."
+      },
+      {
+        "turn": 24,
+        "role": "user",
+        "content": "Please prepare one final operational summary focused on licensure, patient identity checks, consent capture, and secure audit logging."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "Before distributing the summary, how quickly are remote consultations supposed to be logged after completion?",
+        "is_recall": true,
+        "target_fact_id": "F2",
+        "ground_truth": [
+          "Within 12 hours",
+          "Remote consultations must be logged within 12 hours"
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_08",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "We are reviewing regulatory requirements for a remote cardiology network serving rural patients.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "All telehealth session recordings are encrypted with AES-256.",
+            "tier": "structural"
+          },
+          {
+            "id": "F2",
+            "text": "Patient identity verification requires two matching identifiers before each visit.",
+            "tier": "structural"
+          },
+          {
+            "id": "F3",
+            "text": "Nurse practitioners cannot independently treat patients in Florida without physician oversight.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "The platform prohibits public Wi-Fi access for clinician dashboards.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "The organization currently supports clinics in Florida, Georgia, and Alabama.",
+            "tier": "context"
+          },
+          {
+            "id": "F6",
+            "text": "A breach simulation last month exposed delayed incident escalation procedures.",
+            "tier": "context"
+          },
+          {
+            "id": "F7",
+            "text": "Leadership may migrate archival data to a separate storage vendor next year.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The company is evaluating remote cardiac monitoring integrations.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "The compliance review should address licensure portability, HIPAA safeguards, remote prescribing standards, and incident response obligations for each supported state."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "We need a workflow for clinicians providing follow-up care to patients who temporarily relocate during hurricane season."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "The intake process should confirm the patient's physical location at the start of every visit and route appointments only to clinicians authorized in that jurisdiction."
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "For the cybersecurity audit notes, which encryption standard is protecting the telehealth recordings?",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "AES-256",
+          "Telehealth session recordings are encrypted with AES-256"
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The recordings are encrypted with AES-256. Key rotation schedules and access logging should also be reviewed during the audit."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "We also need recommendations for documenting informed consent during unstable internet connections."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "The platform should allow timestamped verbal consent capture with automatic synchronization once connectivity stabilizes, while preserving an immutable audit trail."
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "Our operations team is drafting identity verification rules for elderly patients who sometimes forget account credentials."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "How many matching identifiers are required before a patient visit can begin on the system?",
+        "is_recall": true,
+        "target_fact_id": "F2",
+        "ground_truth": [
+          "Two matching identifiers",
+          "Patient identity verification requires two matching identifiers"
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "The system currently requires two matching identifiers before each visit. Backup verification procedures for elderly patients can be added without weakening security controls."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "The legal department also wants safeguards for clinicians attempting to log in from unsecured networks while traveling."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "The platform should automatically block clinician dashboard access from public Wi-Fi networks and require secure VPN connections for remote access."
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "We are reviewing supervisory obligations for advanced practice providers handling telehealth consultations in different states."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "In Florida operations, what limitation applies to nurse practitioners during patient treatment?",
+        "is_recall": true,
+        "target_fact_id": "F3",
+        "ground_truth": [
+          "They require physician oversight",
+          "Nurse practitioners cannot independently treat patients in Florida without physician oversight"
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "In Florida, nurse practitioners cannot independently treat patients without physician oversight. Scheduling and documentation systems should reflect that supervisory requirement."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "The security committee is also revising incident response timelines for suspected PHI exposure events."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "A formal escalation matrix should define reporting thresholds, response ownership, and mandatory notification timelines for any suspected exposure involving protected health information."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "We may also expand the platform with connected medical device capabilities for chronic cardiac patients."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "Which future integration is leadership currently evaluating for the cardiology program?",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "Remote cardiac monitoring integrations",
+          "The company is evaluating remote cardiac monitoring integrations"
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The company is evaluating remote cardiac monitoring integrations, so device authentication, data integrity checks, and FDA-related considerations should be incorporated into planning."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "We also need a recommendation for improving breach response coordination between clinical staff and the cybersecurity team."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Joint incident drills, predefined escalation contacts, and centralized reporting dashboards would help reduce delays during breach investigations."
+      },
+      {
+        "turn": 24,
+        "role": "user",
+        "content": "Please compile a final compliance outline focused on state licensure, authentication controls, patient consent, and emergency escalation procedures."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "Before the outline is circulated, which issue did the breach simulation reveal in the response process?",
+        "is_recall": true,
+        "target_fact_id": "F6",
+        "ground_truth": [
+          "Delayed incident escalation procedures",
+          "The breach simulation exposed delayed incident escalation procedures"
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_09",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "We are preparing documents for a multicenter diabetes clinical trial and need protocol and IRB support.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The study enrollment cap is 120 participants.",
+            "tier": "structural"
+          },
+          {
+            "id": "F2",
+            "text": "The trial has three study arms including placebo.",
+            "tier": "structural"
+          },
+          {
+            "id": "F3",
+            "text": "No participant under age 21 may be enrolled.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "Serious adverse events must be reported to the IRB within 48 hours.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "The principal investigator is Dr. Nadia Rahman.",
+            "tier": "context"
+          },
+          {
+            "id": "F6",
+            "text": "The sponsor organization is Horizon Therapeutics Research Group.",
+            "tier": "context"
+          },
+          {
+            "id": "F7",
+            "text": "The informed consent document is currently on version 2.3.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The first IRB review meeting is scheduled for September 18.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "I can help organize the protocol package, informed consent workflow, IRB submission materials, and adverse event reporting procedures for the diabetes trial."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "Draft eligibility language clarifying that participants must already have a confirmed Type 2 diabetes diagnosis before screening."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "Suggested language: \"Eligible participants must have documented evidence of Type 2 diabetes mellitus prior to screening and must provide supporting medical records or physician confirmation during enrollment review.\""
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "Before I finalize recruitment projections for the coordinators, confirm the participant ceiling we approved for this study.",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "120 participants",
+          "The study enrollment cap is 120 participants."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The approved enrollment cap for the study is 120 participants."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "Prepare a concise section for the protocol explaining how placebo assignment will be blinded from participants."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "Protocol text: \"Participants randomized to placebo will receive visually identical treatment packaging. Allocation assignments will remain concealed from participants and site coordinators unless emergency unblinding is required for patient safety.\""
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "We had a mild dizziness complaint during screening yesterday. Explain whether that requires expedited reporting to the IRB."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "The compliance team is reviewing timelines again, so include the reporting window tied to critical safety events.",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "within 48 hours",
+          "Serious adverse events must be reported to the IRB within 48 hours."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "Serious adverse events are required to be reported to the IRB within 48 hours. Mild dizziness without hospitalization or significant medical risk would generally be documented as a non-serious adverse event unless severity increases."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "Update the informed consent language to emphasize voluntary withdrawal rights without affecting future care."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "Suggested language: \"Participation in this study is voluntary. Participants may withdraw from the study at any time without penalty or loss of access to standard medical care or future treatment.\""
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The sponsor requested a cleaner title page for the IRB packet. Add the sponsor organization beneath the protocol identifier."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "I also need the organization name exactly as listed in our submission records before printing the cover sheet.",
+        "is_recall": true,
+        "target_fact_id": "F6",
+        "ground_truth": [
+          "Horizon Therapeutics Research Group",
+          "The sponsor organization is Horizon Therapeutics Research Group."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The sponsor organization listed in the submission records is Horizon Therapeutics Research Group."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "Create a short monitoring checklist for coordinators reviewing participant eligibility during screening visits."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "Screening checklist: verify confirmed Type 2 diabetes diagnosis, review age eligibility, confirm signed informed consent, document medical history, review exclusion criteria, and confirm participant contact information."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "We may need to issue a revised consent form after the next safety review. Note that in the document tracking section."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "Before circulating the current consent packet to investigators, identify the revision label already assigned to it.",
+        "is_recall": true,
+        "target_fact_id": "F7",
+        "ground_truth": [
+          "version 2.3",
+          "The informed consent document is currently on version 2.3."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The informed consent document currently carries version 2.3."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "Draft a brief email notifying site coordinators that all protocol deviations must be documented within the study management portal."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Subject: Protocol Deviation Documentation Reminder\n\nAll site coordinators are reminded that any protocol deviation identified during study conduct must be documented promptly within the study management portal, including corrective actions and supporting notes."
+      },
+      {
+        "turn": 24,
+        "role": "assistant",
+        "content": "Additionally, coordinators should notify the principal investigator if any deviation could affect participant safety, consent validity, or data integrity."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "The regulatory calendar is being finalized today, so provide the date reserved for the first ethics committee review session.",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "September 18",
+          "The first IRB review meeting is scheduled for September 18."
+        ]
+      }
+    ]
+  },
+  {
+    "script_id": "medical_10",
+    "domain": "medical",
+    "turns": [
+      {
+        "turn": 1,
+        "role": "user",
+        "content": "We are coordinating documentation for an oncology clinical trial involving investigational immunotherapy.",
+        "injected_facts": [
+          {
+            "id": "F1",
+            "text": "The protocol duration is 18 months.",
+            "tier": "structural"
+          },
+          {
+            "id": "F2",
+            "text": "The study includes four participating hospitals.",
+            "tier": "structural"
+          },
+          {
+            "id": "F3",
+            "text": "Pregnant patients are excluded from enrollment.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F4",
+            "text": "Unexpected fatal adverse events must be reported to the sponsor within 24 hours.",
+            "tier": "constraint"
+          },
+          {
+            "id": "F5",
+            "text": "The lead study coordinator is Melissa Qureshi.",
+            "tier": "context"
+          },
+          {
+            "id": "F6",
+            "text": "The IRB of record is Central Valley Ethics Board.",
+            "tier": "context"
+          },
+          {
+            "id": "F7",
+            "text": "The data monitoring plan was revised on August 2.",
+            "tier": "mutable"
+          },
+          {
+            "id": "F8",
+            "text": "The next interim safety analysis is scheduled for November 11.",
+            "tier": "mutable"
+          }
+        ]
+      },
+      {
+        "turn": 2,
+        "role": "assistant",
+        "content": "I can support preparation of the oncology protocol package, ethics submissions, informed consent updates, and safety reporting documentation."
+      },
+      {
+        "turn": 3,
+        "role": "user",
+        "content": "Generate protocol wording explaining that participants will undergo imaging assessments every eight weeks."
+      },
+      {
+        "turn": 4,
+        "role": "assistant",
+        "content": "Suggested wording: \"Participants enrolled in the study will complete radiologic imaging assessments every eight weeks to evaluate disease progression and treatment response.\""
+      },
+      {
+        "turn": 5,
+        "role": "user",
+        "content": "The finance office is reviewing site budgeting again, so include the total timeframe approved for this protocol.",
+        "is_recall": true,
+        "target_fact_id": "F1",
+        "ground_truth": [
+          "18 months",
+          "The protocol duration is 18 months."
+        ]
+      },
+      {
+        "turn": 6,
+        "role": "assistant",
+        "content": "The approved protocol duration for the study is 18 months."
+      },
+      {
+        "turn": 7,
+        "role": "user",
+        "content": "Prepare a concise informed consent paragraph describing immune-related side effects in plain language."
+      },
+      {
+        "turn": 8,
+        "role": "assistant",
+        "content": "Suggested text: \"This treatment may affect the immune system and could cause inflammation in organs such as the lungs, liver, intestines, or skin. Participants should immediately report new symptoms including rash, breathing problems, fever, or severe diarrhea.\""
+      },
+      {
+        "turn": 9,
+        "role": "user",
+        "content": "One participant experienced severe respiratory distress after infusion. Clarify the escalation expectations for sponsor notification."
+      },
+      {
+        "turn": 10,
+        "role": "user",
+        "content": "Compliance asked for the exact turnaround tied to unexpected fatal safety events before they finalize the escalation SOP.",
+        "is_recall": true,
+        "target_fact_id": "F4",
+        "ground_truth": [
+          "within 24 hours",
+          "Unexpected fatal adverse events must be reported to the sponsor within 24 hours."
+        ]
+      },
+      {
+        "turn": 11,
+        "role": "assistant",
+        "content": "Unexpected fatal adverse events must be reported to the sponsor within 24 hours, along with all currently available clinical details and follow-up documentation."
+      },
+      {
+        "turn": 12,
+        "role": "user",
+        "content": "Draft eligibility language confirming that pregnancy testing is required before enrollment for applicable participants."
+      },
+      {
+        "turn": 13,
+        "role": "assistant",
+        "content": "Eligibility text: \"Participants of childbearing potential must complete a negative pregnancy test prior to enrollment. Pregnant patients are not eligible for participation in this study.\""
+      },
+      {
+        "turn": 14,
+        "role": "user",
+        "content": "The ethics submission packet needs a dedicated contact page listing the lead coordinator for investigator questions."
+      },
+      {
+        "turn": 15,
+        "role": "user",
+        "content": "Before the packet goes out, provide the coordinator name exactly as it appears in the operational records.",
+        "is_recall": true,
+        "target_fact_id": "F5",
+        "ground_truth": [
+          "Melissa Qureshi",
+          "The lead study coordinator is Melissa Qureshi."
+        ]
+      },
+      {
+        "turn": 16,
+        "role": "assistant",
+        "content": "The lead study coordinator listed in the operational records is Melissa Qureshi."
+      },
+      {
+        "turn": 17,
+        "role": "user",
+        "content": "Create a short checklist for site monitors reviewing consent documentation during audits."
+      },
+      {
+        "turn": 18,
+        "role": "assistant",
+        "content": "Audit checklist: confirm signed consent before procedures, verify participant initials where required, confirm correct consent version usage, review witness signatures if applicable, and ensure dates are complete and legible."
+      },
+      {
+        "turn": 19,
+        "role": "user",
+        "content": "We updated monitoring procedures recently. Add a note to the protocol history section indicating that the oversight plan was revised."
+      },
+      {
+        "turn": 20,
+        "role": "user",
+        "content": "The documentation archive needs the exact revision date tied to the monitoring plan update.",
+        "is_recall": true,
+        "target_fact_id": "F7",
+        "ground_truth": [
+          "August 2",
+          "The data monitoring plan was revised on August 2."
+        ]
+      },
+      {
+        "turn": 21,
+        "role": "assistant",
+        "content": "The data monitoring plan revision date recorded in the archive is August 2."
+      },
+      {
+        "turn": 22,
+        "role": "user",
+        "content": "Draft a brief notification reminding investigators to submit protocol deviations with corrective actions attached."
+      },
+      {
+        "turn": 23,
+        "role": "assistant",
+        "content": "Subject: Protocol Deviation Reporting Reminder\n\nInvestigators are reminded to submit all identified protocol deviations promptly, including a description of the event, participant impact assessment, and any corrective or preventive actions implemented."
+      },
+      {
+        "turn": 24,
+        "role": "assistant",
+        "content": "Please ensure all deviation reports are uploaded into the centralized study tracking system before monthly compliance review meetings."
+      },
+      {
+        "turn": 25,
+        "role": "user",
+        "content": "The safety committee is scheduling calendars now, so include the date reserved for the next interim analysis session.",
+        "is_recall": true,
+        "target_fact_id": "F8",
+        "ground_truth": [
+          "November 11",
+          "The next interim safety analysis is scheduled for November 11."
+        ]
+      }
+    ]
+  }
+]
