@@ -2,7 +2,7 @@
 Hierarchical memory: three-level architecture (working → episodic → semantic).
 
 Compression is self-triggered by token-budget pressure inside add_message(),
-so external compress() calls from the harness are intentional no-ops.
+so external compress() calls from the llm are intentional no-ops.
 
 Levels
 ------

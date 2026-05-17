@@ -35,14 +35,6 @@ Rules:
 
 
 class SimpleGroqClient:
-    """
-    Groq API wrapper with:
-    - Per-key cooldown tracking with exponential back-off on rate limits.
-    - Explicit max_tokens per call type (recall vs compression).
-    - system_prompt support passed as the 'system' role message.
-    - seed=42 for reproducibility.
-    """
-
     DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
     def __init__(self, api_keys: list[str], model_name: str = DEFAULT_MODEL) -> None:
@@ -53,11 +45,16 @@ class SimpleGroqClient:
         self.key_cooldown_until: dict[str, float] = {k: 0.0 for k in self.keys}
         self.current_key: str = self.keys[0]
         self.client: Groq = Groq(api_key=self.current_key)
+        self._call_count: int = 0          
         print(f"[Groq] Initialised with {len(self.keys)} key(s), model={self.model}")
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def get_call_count(self) -> int:
+        """Return total number of successful generate() calls made so far."""
+        return self._call_count
 
     def _pick_available_key(self, cooldown_on_current: float = 0.0) -> None:
         """
@@ -139,6 +136,7 @@ class SimpleGroqClient:
                     stop=stop,
                     seed=42,
                 )
+                self._call_count += 1      # ← count every successful call
                 return resp.choices[0].message.content.strip()
 
             except Exception as exc:

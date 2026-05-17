@@ -24,9 +24,9 @@ if _PROJECT_ROOT not in sys.path:
 
 from dotenv import load_dotenv
 
-from harness.judge import compute_frr, compute_frr_by_distance, score_results_csv
-from harness.llm_groq import SimpleGroqClient
-from harness.utils import filter_none_keys, set_seed, setup_logging
+from analysis.judge import compute_frr, compute_frr_by_distance, score_results_csv
+from llm.llm_groq import SimpleGroqClient
+from llm.utils import filter_none_keys, set_seed, setup_logging
 
 load_dotenv()
 

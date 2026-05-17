@@ -52,17 +52,20 @@ class RAGMemory(MemoryBase):
 
     def __init__(
         self,
-        embedding_model: str = "all-MiniLM-L6-v2",
+        embedding_model: str = "models/all-MiniLM-L6-v2",
         k: int = 3,
         buffer_size: int = 4,
         alpha: float = 0.7,
+        encoder=None,
     ) -> None:
         self.embedding_model_name = embedding_model
         self.k = k
         self.buffer_size = buffer_size
         self.alpha = alpha
 
-        self.encoder = SentenceTransformer(embedding_model)
+        # Accept a pre-loaded encoder to avoid downloading/loading per worker.
+        # SentenceTransformer.encode() is thread-safe (read-only inference).
+        self.encoder = encoder if encoder is not None else SentenceTransformer(embedding_model)
         self._chroma = chromadb.Client()
         self._collection_name = f"conv_{uuid.uuid4().hex}"
         self.collection = self._chroma.create_collection(self._collection_name)

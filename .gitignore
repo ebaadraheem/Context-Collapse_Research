@@ -8,3 +8,5 @@ test_scripts/
 *.csv
 *.json
 *.log
+models/
+results/

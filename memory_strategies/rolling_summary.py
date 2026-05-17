@@ -2,7 +2,7 @@
 Rolling summarisation memory.
 
 Compression is self-triggered when context size exceeds token_budget.
-compress() is also a valid external entry point (called from the harness
+compress() is also a valid external entry point (called from the llm
 for strategies that do not self-trigger).
 """
 
@@ -86,7 +86,7 @@ class RollingSummaryMemory(MemoryBase):
         """
         External compression hook.
 
-        Called by the harness (run_benchmark.py). Delegates to _do_compress()
+        Called by the llm (run_benchmark.py). Delegates to _do_compress()
         only when there are raw messages to process.
         """
         if self.raw_messages:

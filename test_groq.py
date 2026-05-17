@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import os
 from dotenv import load_dotenv
-from harness.llm_groq import SimpleGroqClient
-from harness.utils import filter_none_keys
+from llm.llm_groq import SimpleGroqClient
+from llm.utils import filter_none_keys
 
 load_dotenv()
 
