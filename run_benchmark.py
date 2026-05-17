@@ -1,189 +1,310 @@
-import os
-import json
+from __future__ import annotations
+
 import csv
+import json
+import logging
+import os
 import time
 from datetime import datetime
+
+from dotenv import load_dotenv
 from tqdm import tqdm
 
-# Import memory strategies
+from harness.llm_groq import SimpleGroqClient
+from harness.utils import (
+    filter_none_keys,
+    load_scripts,
+    save_conversation_history,
+    set_seed,
+    setup_logging,
+    validate_script,
+)
 from memory_strategies import (
     BaselineMemory,
-    RollingSummaryMemory,
     HierarchicalMemory,
     RAGMemory,
+    RollingSummaryMemory,
 )
 
-from harness.llm_gemini import RotatingGeminiClient
-from harness.llm_groq import SimpleGroqClient
-from dotenv import load_dotenv
 load_dotenv()
 
+# ---------------------------------------------------------------------------
 # Configuration
-SCRIPTS_DIR = "test_scripts"     # for quick testing
+# ---------------------------------------------------------------------------
+
+SCRIPTS_DIR = "test_scripts"
 RESULTS_DIR = "results"
+HISTORY_DIR = os.path.join(RESULTS_DIR, "histories")
 REPETITIONS = 5
-SLEEP_BETWEEN_CALLS = 0.5  # to avoid hitting rate limits too quickly
+SLEEP_BETWEEN_LLM_CALLS = 0.5   # seconds between every LLM call
 
-def get_all_scripts():
-    scripts = []
-    for fname in os.listdir(SCRIPTS_DIR):
-        if fname.endswith(".json"):
-            with open(os.path.join(SCRIPTS_DIR, fname), "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    scripts.extend(data)
-                else:
-                    scripts.append(data)
-    return scripts
+# How often (every N *user* turns) to trigger memory compression.
+# Recall turns are at positions 5,10,15,20,25.
+# Compression fires AFTER a non-recall user turn at those positions to avoid
+# compressing fact-injection turns immediately before recall.
+COMPRESS_EVERY_N = 5
 
-def get_user_messages(script):
-    user_msgs = []
-    for turn in script["turns"]:
-        if turn["role"] == "user":
-            user_msgs.append(turn["content"])
-    return user_msgs
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
 
-def is_recall_turn(script, turn_index):
-    turn_num = turn_index + 1
-    if turn_num not in {5,10,15,20,25}:
-        return False
-    for turn in script["turns"]:
-        if turn.get("turn") == turn_num and turn.get("is_recall"):
-            return True
-    return False
+RECALL_USER_TEMPLATE = """\
+Conversation history:
+{context}
 
-def get_recall_info(script, turn_index):
-    turn_num = turn_index + 1
-    for turn in script["turns"]:
-        if turn.get("turn") == turn_num and turn.get("is_recall"):
-            return turn.get("target_fact_id"), turn.get("ground_truth")
-    return None, None
+Recall question: {question}"""
 
-def run_strategy(script, strategy_name, strategy_class, llm, script_id, rep):
-    print(f"      [DEBUG] Starting {strategy_name} rep {rep}")
-    if strategy_class in (RollingSummaryMemory, HierarchicalMemory):
-        memory = strategy_class(llm)
-    else:
-        memory = strategy_class()
+NO_CONTEXT_USER_TEMPLATE = """\
+Recall question: {question}"""
+
+# ---------------------------------------------------------------------------
+# Strategy registry
+# ---------------------------------------------------------------------------
+
+# (name, class, needs_llm)
+STRATEGIES: list[tuple[str, type, bool]] = [
+    ("baseline", BaselineMemory, False),
+    ("rolling_summary", RollingSummaryMemory, True),
+    ("hierarchical", HierarchicalMemory, True),
+    ("rag", RAGMemory, False),
+]
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Core runner
+# ---------------------------------------------------------------------------
+
+
+def run_strategy(
+    script: dict,
+    strategy_name: str,
+    strategy_class: type,
+    llm: SimpleGroqClient,
+    script_id: str,
+    rep: int,
+) -> tuple[list[dict], list[dict]]:
+    """
+    Execute a single (script × strategy × rep) run.
+
+    Returns:
+        results  : List of recall-turn result dicts (written to CSV).
+        history  : Full conversation history (written to JSONL).
+    """
+    needs_llm = strategy_class in (RollingSummaryMemory, HierarchicalMemory)
+    memory = strategy_class(llm) if needs_llm else strategy_class()
 
     turns = script["turns"]
-    results = []
+    results: list[dict] = []
+    history: list[dict] = []
+    user_turn_count = 0   # counts only user turns (drives compression cadence)
 
     for turn_obj in turns:
-        turn_num = turn_obj["turn"]
-        role = turn_obj["role"]
-        content = turn_obj["content"]
+        turn_num: int = turn_obj["turn"]
+        role: str = turn_obj["role"]
+        content: str = turn_obj["content"]
+        is_recall: bool = bool(turn_obj.get("is_recall", False))
 
         if role == "user":
+            user_turn_count += 1
+
+            if (
+                user_turn_count % COMPRESS_EVERY_N == 0
+                and not is_recall
+            ):
+                logger.debug("Turn %d: compressing memory.", turn_num)
+                memory.compress()
+                time.sleep(SLEEP_BETWEEN_LLM_CALLS)
+
             # Build context
-            if isinstance(memory, RAGMemory):
-                context = memory.get_context(content)
-            else:
-                context = memory.get_context()
+            context = memory.get_context(query=content)
 
-            # Build prompt (same as before)
+            # Build user prompt
             if context:
-                full_prompt = (
-                    f"Conversation history:\n{context}\n\n"
-                    f"Question: {content}\n\n"
-                    f"Instructions: Answer using ONLY the facts in the conversation history above. "
-                    f"Answer in one short phrase (max 6 words). "
-                    f"If the exact answer is not present, respond with exactly 'I don't know'.\n\n"
-                    f"Answer:"
+                user_prompt = RECALL_USER_TEMPLATE.format(
+                    context=context, question=content
                 )
             else:
-                full_prompt = (
-                    f"Question: {content}\n\n"
-                    f"Instructions: Answer directly. If you don't know, say 'I don't know'.\n\n"
-                    f"Answer:"
-                )
+                user_prompt = NO_CONTEXT_USER_TEMPLATE.format(question=content)
 
-            print(f"      [DEBUG] Turn {turn_num} - calling llm.generate (prompt length {len(full_prompt)})")
-            response = llm.generate(full_prompt)
-            print(f"      [DEBUG] Turn {turn_num} - got response (length {len(response)})")
+            # LLM call
+            logger.debug(
+                "Turn %d: calling LLM (prompt_len=%d).", turn_num, len(user_prompt)
+            )
+            response = llm.generate(user_prompt, use_stop_tokens=is_recall)
+            logger.debug("Turn %d: response=%r", turn_num, response)
+            time.sleep(SLEEP_BETWEEN_LLM_CALLS)
 
-            # Store in memory
+            # Store exchange in memory
             memory.add_message("user", content)
             memory.add_message("assistant", response)
 
-            # If this is a recall turn, record the result
-            if turn_obj.get("is_recall"):
-                target_id = turn_obj.get("target_fact_id")
-                gt_list = turn_obj.get("ground_truth")
-                results.append({
+            # Log to history
+            history.append(
+                {
                     "turn": turn_num,
-                    "target_fact_id": target_id,
-                    "ground_truth": gt_list,
-                    "agent_response": response,
-                    "script_id": script_id,
-                    "strategy": strategy_name,
-                    "rep": rep
-                })
+                    "role": "user",
+                    "content": content,
+                    "is_recall": is_recall,
+                }
+            )
+            history.append(
+                {
+                    "turn": turn_num,
+                    "role": "assistant",
+                    "content": response,
+                    "is_recall": False,
+                }
+            )
+
+            # Record recall result
+            if is_recall:
+                results.append(
+                    {
+                        "script_id": script_id,
+                        "strategy": strategy_name,
+                        "rep": rep,
+                        "turn": turn_num,
+                        "question": content,
+                        "target_fact_id": turn_obj.get("target_fact_id"),
+                        "ground_truth": turn_obj.get("ground_truth", []),
+                        "agent_response": response,
+                    }
+                )
+
         else:
+            # Scripted assistant turn (not generated)
             memory.add_message("assistant", content)
+            history.append(
+                {"turn": turn_num, "role": "assistant", "content": content, "is_recall": False}
+            )
 
-        # Trigger compression every 5 turns (based on actual turn number)
-        if turn_num % 5 == 0 and role == "assistant":
-            print(f"      [DEBUG] Turn {turn_num} - calling compress()")
-            memory.compress()
+    return results, history
 
-        time.sleep(SLEEP_BETWEEN_CALLS)
 
-    return results
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
-def main():
+
+def main() -> None:
+    setup_logging(RESULTS_DIR)
+    set_seed(42)
+
     os.makedirs(RESULTS_DIR, exist_ok=True)
+    os.makedirs(HISTORY_DIR, exist_ok=True)
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_csv = os.path.join(RESULTS_DIR, f"benchmark_results_{timestamp}.csv")
 
-    scripts = get_all_scripts()
-    print(f"Loaded {len(scripts)} scripts.")
+    # ------------------------------------------------------------------
+    # Load & validate scripts
+    # ------------------------------------------------------------------
+    scripts = load_scripts(SCRIPTS_DIR)
+    for script in scripts:
+        warnings = validate_script(script)
+        for w in warnings:
+            logger.warning("Script validation: %s", w)
 
-    groq_keys = [
-        os.getenv("GROQ_API_KEY_1"),
-        os.getenv("GROQ_API_KEY_2"),
-        os.getenv("GROQ_API_KEY_3"),
-    ]
+    # ------------------------------------------------------------------
+    # LLM client
+    # ------------------------------------------------------------------
+    groq_keys = filter_none_keys(
+        [
+            os.getenv("GROQ_API_KEY_1"),
+            os.getenv("GROQ_API_KEY_2"),
+            os.getenv("GROQ_API_KEY_3"),
+        ]
+    )
     llm = SimpleGroqClient(groq_keys)
-    print("Groq LLM client ready.")
 
-    strategies = [
-        ("rolling_summary", RollingSummaryMemory),
-        ("baseline", BaselineMemory),
-        ("hierarchical", HierarchicalMemory),
-        ("rag", RAGMemory),
+    # ------------------------------------------------------------------
+    # CSV setup
+    # ------------------------------------------------------------------
+    fieldnames = [
+        "script_id",
+        "strategy",
+        "repetition",
+        "turn",
+        "question",
+        "target_fact_id",
+        "agent_response",
+        "ground_truth",
     ]
 
-    csv_file = open(output_csv, "w", newline="", encoding="utf-8")
-    fieldnames = ["script_id", "strategy", "repetition", "turn", "target_fact_id", "agent_response", "ground_truth"]
-    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-    writer.writeheader()
-
-    total_runs = len(scripts) * len(strategies) * REPETITIONS
+    total_runs = len(scripts) * len(STRATEGIES) * REPETITIONS
     pbar = tqdm(total=total_runs, desc="Overall progress")
 
-    for script in scripts:
-        script_id = script.get("script_id", "unknown")
-        for strategy_name, strategy_class in strategies:
-            for rep in range(REPETITIONS):
-                print(f"  Starting {strategy_name} on script {script_id}, rep {rep}")
-                results = run_strategy(script, strategy_name, strategy_class, llm, script_id, rep)
-                for row in results:
-                    writer.writerow({
-                        "script_id": row["script_id"],
-                        "strategy": row["strategy"],
-                        "repetition": row["rep"],
-                        "turn": row["turn"],
-                        "target_fact_id": row["target_fact_id"],
-                        "agent_response": row["agent_response"],
-                        "ground_truth": json.dumps(row["ground_truth"]),
-                    })
-                csv_file.flush()
-                pbar.update(1)
+    with open(output_csv, "w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
 
-    csv_file.close()
+        for script in scripts:
+            script_id = script.get("script_id", "unknown")
+
+            for strategy_name, strategy_class, _ in STRATEGIES:
+                for rep in range(REPETITIONS):
+                    logger.info(
+                        "Running: script=%s strategy=%s rep=%d",
+                        script_id,
+                        strategy_name,
+                        rep,
+                    )
+
+                    try:
+                        results, history = run_strategy(
+                            script=script,
+                            strategy_name=strategy_name,
+                            strategy_class=strategy_class,
+                            llm=llm,
+                            script_id=script_id,
+                            rep=rep,
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            "FAILED: script=%s strategy=%s rep=%d — %s",
+                            script_id,
+                            strategy_name,
+                            rep,
+                            exc,
+                            exc_info=True,
+                        )
+                        pbar.update(1)
+                        continue
+
+                    # Write recall results to CSV
+                    for row in results:
+                        writer.writerow(
+                            {
+                                "script_id": row["script_id"],
+                                "strategy": row["strategy"],
+                                "repetition": row["rep"],
+                                "turn": row["turn"],
+                                "question": row["question"],
+                                "target_fact_id": row["target_fact_id"],
+                                "agent_response": row["agent_response"],
+                                "ground_truth": json.dumps(row["ground_truth"]),
+                            }
+                        )
+                    csv_file.flush()
+
+                    # Save full conversation history
+                    hist_path = save_conversation_history(
+                        history=history,
+                        out_dir=HISTORY_DIR,
+                        script_id=script_id,
+                        strategy_name=strategy_name,
+                        rep=rep,
+                    )
+                    logger.debug("History saved to %s", hist_path)
+
+                    pbar.update(1)
+
     pbar.close()
-    print(f"\nResults saved to {output_csv}")
+    logger.info("Benchmark complete. Results saved to %s", output_csv)
+    print(f"\nDone. Results → {output_csv}")
+
 
 if __name__ == "__main__":
     main()

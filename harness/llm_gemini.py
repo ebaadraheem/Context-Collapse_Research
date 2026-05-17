@@ -1,71 +1,145 @@
+"""Gemini LLM client with per-key cooldown tracking and exponential back-off."""
+
 import time
-import itertools
+
 from google import genai
 from google.genai import types
-# from google.genai.services import ModelService
+
+# Shared system prompt (same as Groq client for consistency).
+RECALL_SYSTEM_PROMPT = """\
+You are a fact-recall assistant operating inside a benchmark.
+Your only job is to recall a specific fact from the conversation history provided.
+
+Rules:
+1. Answer with the exact value from the conversation history: name, number, date, amount, etc.
+2. Do NOT explain, do NOT add context, do NOT paraphrase.
+3. If the answer is not explicitly stated in the history, respond with exactly: I don't know
+4. Maximum answer length: 10 words.\
+"""
+
 
 class RotatingGeminiClient:
-    def __init__(self, api_keys: list, model_name: str = "gemini-2.0-flash"):
-        """
-        Use gemini-2.0-flash-exp (no thinking tokens) for reliable short answers.
-        """
-        # print(ModelService.ListModels())
+    """
+    Gemini API wrapper with per-key cooldown tracking.
+
+    Key fix vs original: _get_next_available_key() now updates self.client
+    so rotation is actually effective.
+    """
+
+    DEFAULT_MODEL = "gemini-2.0-flash"
+
+    def __init__(
+        self,
+        api_keys: list[str],
+        model_name: str = DEFAULT_MODEL,
+    ) -> None:
         self.keys = [k for k in api_keys if k]
         if not self.keys:
-            raise ValueError("No Gemini API keys provided")
-        self.key_cooldown_until = {key: 0 for key in self.keys}
-        self.key_cycle = itertools.cycle(self.keys)
+            raise ValueError("No Gemini API keys provided.")
         self.model_name = model_name
-        self.current_key = next(self.key_cycle)
+        self.key_cooldown_until: dict[str, float] = {k: 0.0 for k in self.keys}
+        self.current_key: str = self.keys[0]
         self.client = genai.Client(api_key=self.current_key)
-        print(f"[Gemini] Initialized with {len(self.keys)} keys, model={self.model_name}")
+        print(
+            f"[Gemini] Initialised with {len(self.keys)} key(s), model={self.model_name}"
+        )
 
-    def _get_next_available_key(self):
-        start_key = self.current_key
-        while True:
-            if time.time() > self.key_cooldown_until.get(self.current_key, 0):
-                return self.current_key
-            self.current_key = next(self.key_cycle)
-            if self.current_key == start_key:
-                min_cooldown = min(self.key_cooldown_until.values())
-                wait_time = max(0, min_cooldown - time.time()) + 1
-                print(f"[Gemini] All keys cooling. Waiting for {wait_time:.2f} seconds...")
-                time.sleep(wait_time)
-                start_key = self.current_key
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-    def generate(self, prompt: str, max_attempts_per_key: int = 3) -> str:
-        for attempt in range(max_attempts_per_key):
-            self.current_key = self._get_next_available_key()
+    def _pick_available_key(self, cooldown_on_current: float = 0.0) -> None:
+        """Apply cooldown to current key, then switch to the next available one."""
+        if cooldown_on_current > 0:
+            self.key_cooldown_until[self.current_key] = (
+                time.time() + cooldown_on_current
+            )
+
+        now = time.time()
+        available = [k for k, t in self.key_cooldown_until.items() if t <= now]
+        if available:
+            others = [k for k in available if k != self.current_key]
+            chosen = others[0] if others else available[0]
+        else:
+            earliest = min(self.key_cooldown_until, key=self.key_cooldown_until.get)
+            wait = self.key_cooldown_until[earliest] - now + 0.5
+            print(f"[Gemini] All keys cooling. Waiting {wait:.1f}s …")
+            time.sleep(wait)
+            chosen = earliest
+
+        if chosen != self.current_key:
+            self.current_key = chosen
+            # *** Bug fix: update the client when we rotate ***
+            self.client = genai.Client(api_key=chosen)
+            print(f"[Gemini] Switched to key …{chosen[-6:]}")
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str = RECALL_SYSTEM_PROMPT,
+        max_output_tokens: int = 100,
+        max_attempts: int = 5,
+    ) -> str:
+        """
+        Generate a completion with retry and key rotation.
+
+        Args:
+            prompt: User-turn text.
+            system_prompt: System instruction prepended to the request.
+            max_output_tokens: Token budget.
+            max_attempts: Total retry budget across all keys.
+        Returns:
+            Stripped text response.
+        """
+        last_exc: Exception | None = None
+
+        for attempt in range(max_attempts):
             try:
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
                     config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
                         temperature=0.0,
-                        max_output_tokens=100,   # enough for a short phrase
-                    )
+                        max_output_tokens=max_output_tokens,
+                    ),
                 )
-                # Extract text from the first candidate
-                if response.candidates and len(response.candidates) > 0:
+                if response.candidates:
                     candidate = response.candidates[0]
                     if candidate.content and candidate.content.parts:
-                        text_parts = [p.text for p in candidate.content.parts if p.text]
+                        text_parts = [
+                            p.text for p in candidate.content.parts if p.text
+                        ]
                         if text_parts:
-                            full_text = "".join(text_parts).strip()
-                            return full_text
-                # If no text, log and rotate key
-                print(f"[Gemini] Empty response for key {self.current_key[-5:]}. Response: {response}")
-                self.key_cooldown_until[self.current_key] = time.time() + 30
-                continue
-            except Exception as e:
-                error_msg = str(e).lower()
-                if "429" in error_msg or "quota" in error_msg or "rate limit" in error_msg:
-                    cooldown_seconds = 30 * (2 ** attempt)
-                    print(f"[Gemini] Key {self.current_key[-5:]} rate limited. Cooling for {cooldown_seconds}s.")
-                    self.key_cooldown_until[self.current_key] = time.time() + cooldown_seconds
-                    continue
-                # For other errors (404, etc.), rotate key
-                print(f"[Gemini] Error with key {self.current_key[-5:]}: {e}. Rotating...")
-                self.key_cooldown_until[self.current_key] = time.time() + 30
-                continue
-        raise Exception("All Gemini keys exhausted or failed after multiple attempts")
+                            return "".join(text_parts).strip()
+
+                # Empty response — treat as transient error
+                print(
+                    f"[Gemini] Empty response on attempt {attempt + 1}. "
+                    f"Response object: {response}"
+                )
+                self._pick_available_key(cooldown_on_current=15)
+
+            except Exception as exc:
+                last_exc = exc
+                msg = str(exc).lower()
+                if "429" in msg or "quota" in msg or "rate limit" in msg:
+                    cooldown = 30 * (2 ** attempt)
+                    print(
+                        f"[Gemini] Rate limit on key …{self.current_key[-6:]} "
+                        f"(attempt {attempt + 1}/{max_attempts}). "
+                        f"Cooling {cooldown}s."
+                    )
+                    self._pick_available_key(cooldown_on_current=cooldown)
+                else:
+                    print(f"[Gemini] Error: {exc}. Rotating key.")
+                    self._pick_available_key(cooldown_on_current=10)
+
+        raise RuntimeError(
+            f"All Gemini attempts exhausted after {max_attempts} tries. "
+            f"Last error: {last_exc}"
+        )
