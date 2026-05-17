@@ -1,9 +1,22 @@
-"""Rolling summarisation memory: every N turns, summarise all history into a fact list."""
+"""
+Rolling summarisation memory.
 
+Compression is self-triggered when context size exceeds token_budget.
+compress() is also a valid external entry point (called from the harness
+for strategies that do not self-trigger).
+"""
+
+from __future__ import annotations
+
+import time
 from typing import Any
+
 from .base import MemoryBase
 
-# Compression prompt engineered to preserve exact values verbatim.
+# ---------------------------------------------------------------------------
+# Prompt
+# ---------------------------------------------------------------------------
+
 _COMPRESS_PROMPT = """\
 You are a conversation summariser for a fact-retention benchmark.
 Your job is to produce a bullet-point fact list from the conversation below.
@@ -25,29 +38,62 @@ Updated fact list:"""
 
 class RollingSummaryMemory(MemoryBase):
     """
-    Keeps a running bullet-point fact list of the entire conversation.
-    Raw messages are kept only between compression points.
-    On compress(), the fact list is updated to incorporate the new raw messages.
+    Keeps a running bullet-point fact list.
+
+    Raw messages accumulate since the last compression. When get_context() is
+    called or when add_message() detects the context exceeds token_budget, all
+    raw messages are compressed into the summary via an LLM call.
+
+    Args:
+        llm          : LLM client with generate(prompt, use_stop_tokens, max_tokens).
+        token_budget : Approximate token ceiling before self-triggering compression.
+        llm_sleep    : Seconds to sleep after each internal LLM compression call.
     """
 
-    def __init__(self, llm, token_budget: int = 1500):
+    NEEDS_LLM: bool = True
+
+    def __init__(
+        self,
+        llm: Any,
+        token_budget: int = 1500,
+        llm_sleep: float = 0.5,
+    ) -> None:
         self.llm = llm
         self.token_budget = token_budget
-        self.summary = ""
-        self.raw_messages = []
+        self.llm_sleep = llm_sleep
+        self.summary: str = ""
+        self.raw_messages: list[dict] = []
 
-    def add_message(self, role, content):
+    # ------------------------------------------------------------------
+    # Token counting
+    # ------------------------------------------------------------------
+
+    def _token_count(self) -> int:
+        """Approximate token count of the full context (summary + raw messages)."""
+        return max(1, len(self.get_context()) // 4)
+
+    # ------------------------------------------------------------------
+    # MemoryBase interface
+    # ------------------------------------------------------------------
+
+    def add_message(self, role: str, content: str) -> None:
         self.raw_messages.append({"role": role, "content": content})
-        # Compress dynamically when context exceeds budget
+        # Self-trigger compression when budget is exceeded.
         if self._token_count() > self.token_budget:
-            self.compress()
-            
-    def _token_count(self):
-        # Approximate: 1 token ≈ 4 chars
-        return len(self.get_context()) // 4        
+            self._do_compress()
 
     def compress(self) -> None:
-        """Summarise all raw messages (plus existing summary) into a bullet fact list."""
+        """
+        External compression hook.
+
+        Called by the harness (run_benchmark.py). Delegates to _do_compress()
+        only when there are raw messages to process.
+        """
+        if self.raw_messages:
+            self._do_compress()
+
+    def _do_compress(self) -> None:
+        """Core compression logic — shared by add_message and compress."""
         if not self.raw_messages:
             return
 
@@ -56,7 +102,9 @@ class RollingSummaryMemory(MemoryBase):
         )
 
         if self.summary:
-            existing_block = f"Existing fact list (DO NOT lose any of these facts):\n{self.summary}\n"
+            existing_block = (
+                f"Existing fact list (DO NOT lose any of these facts):\n{self.summary}\n"
+            )
         else:
             existing_block = ""
 
@@ -65,8 +113,16 @@ class RollingSummaryMemory(MemoryBase):
             new_messages=new_messages_text,
         )
 
-        self.summary = self.llm.generate(prompt).strip()
-        self.raw_messages = []  # clear buffer after compression
+        self.summary = self.llm.generate(
+            prompt,
+            use_stop_tokens=False,
+            max_tokens=400,
+        ).strip()
+
+        self.raw_messages = []
+
+        # Sleep after internal LLM call to avoid rate-limit bursts.
+        time.sleep(self.llm_sleep)
 
     def get_context(self, query: str = "") -> str:
         parts: list[str] = []
@@ -82,5 +138,3 @@ class RollingSummaryMemory(MemoryBase):
     def reset(self) -> None:
         self.summary = ""
         self.raw_messages = []
-
- 

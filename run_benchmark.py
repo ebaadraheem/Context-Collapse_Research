@@ -1,3 +1,13 @@
+"""
+Context-Collapse Benchmark — main entry point.
+
+Usage:
+    python run_benchmark.py
+
+Environment variables (in .env):
+    GROQ_API_KEY_1, GROQ_API_KEY_2, GROQ_API_KEY_3
+"""
+
 from __future__ import annotations
 
 import csv
@@ -6,9 +16,11 @@ import logging
 import os
 import time
 from datetime import datetime
+from typing import Any
 
 from dotenv import load_dotenv
 from tqdm import tqdm
+
 
 from harness.llm_groq import SimpleGroqClient
 from harness.utils import (
@@ -36,13 +48,7 @@ SCRIPTS_DIR = "test_scripts"
 RESULTS_DIR = "results"
 HISTORY_DIR = os.path.join(RESULTS_DIR, "histories")
 REPETITIONS = 5
-SLEEP_BETWEEN_LLM_CALLS = 0.5   # seconds between every LLM call
-
-# How often (every N *user* turns) to trigger memory compression.
-# Recall turns are at positions 5,10,15,20,25.
-# Compression fires AFTER a non-recall user turn at those positions to avoid
-# compressing fact-injection turns immediately before recall.
-COMPRESS_EVERY_N = 5
+SLEEP_BETWEEN_LLM_CALLS = 0.5  # seconds between main inference calls
 
 # ---------------------------------------------------------------------------
 # Prompts
@@ -60,45 +66,75 @@ Recall question: {question}"""
 # ---------------------------------------------------------------------------
 # Strategy registry
 # ---------------------------------------------------------------------------
+# Each entry: (name, class, kwargs_for_init)
+# - For LLM-dependent strategies, the harness will inject `llm` as the first
+#   positional argument automatically (detected via NEEDS_LLM class attribute).
+# - kwargs_for_init are passed as **kwargs after llm (or as sole kwargs for
+#   non-LLM strategies).
+# - Add entries here to sweep hyperparameters without changing any other code.
+# ---------------------------------------------------------------------------
 
-# (name, class, needs_llm)
-STRATEGIES: list[tuple[str, type, bool]] = [
-    ("baseline", BaselineMemory, False),
-    ("rolling_summary", RollingSummaryMemory, True),
-    ("hierarchical", HierarchicalMemory, True),
-    ("rag", RAGMemory, False),
+STRATEGIES: list[tuple[str, type, dict]] = [
+    ("baseline",        BaselineMemory,       {}),
+    ("rolling_summary", RollingSummaryMemory,  {"token_budget": 1500}),
+    ("hierarchical",    HierarchicalMemory,    {"working_budget": 500, "episodic_budget": 1000}),
+    ("rag",             RAGMemory,             {"k": 3, "buffer_size": 4, "alpha": 0.7}),
 ]
 
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Core runner
+# Memory factory
 # ---------------------------------------------------------------------------
 
+def _make_memory(strategy_class: type, kwargs: dict, llm: SimpleGroqClient):
+    """
+    Instantiate a memory strategy.
+
+    Detects whether the strategy needs an LLM by checking for a NEEDS_LLM
+    class attribute (avoids hard-coding class names in a tuple).
+    """
+    needs_llm = getattr(strategy_class, "NEEDS_LLM", False)
+    if needs_llm:
+        return strategy_class(llm, **kwargs)
+    return strategy_class(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Core runner
+# ---------------------------------------------------------------------------
 
 def run_strategy(
     script: dict,
     strategy_name: str,
     strategy_class: type,
+    strategy_kwargs: dict,
     llm: SimpleGroqClient,
     script_id: str,
     rep: int,
+    memory=None,          # pre-created instance (for reuse with reset())
 ) -> tuple[list[dict], list[dict]]:
     """
     Execute a single (script × strategy × rep) run.
 
+    Args:
+        memory : If provided (e.g. for RAGMemory reuse), reset() is called on it
+                 instead of creating a new instance. This avoids reloading the
+                 sentence-transformer model 200 times.
+
     Returns:
-        results  : List of recall-turn result dicts (written to CSV).
+        results  : Recall-turn result dicts (written to CSV).
         history  : Full conversation history (written to JSONL).
     """
-    needs_llm = strategy_class in (RollingSummaryMemory, HierarchicalMemory)
-    memory = strategy_class(llm) if needs_llm else strategy_class()
+    if memory is not None:
+        memory.reset()
+    else:
+        memory = _make_memory(strategy_class, strategy_kwargs, llm)
 
     turns = script["turns"]
     results: list[dict] = []
     history: list[dict] = []
-    user_turn_count = 0   # counts only user turns (drives compression cadence)
 
     for turn_obj in turns:
         turn_num: int = turn_obj["turn"]
@@ -107,78 +143,44 @@ def run_strategy(
         is_recall: bool = bool(turn_obj.get("is_recall", False))
 
         if role == "user":
-            user_turn_count += 1
-
-            if (
-                user_turn_count % COMPRESS_EVERY_N == 0
-                and not is_recall
-            ):
-                logger.debug("Turn %d: compressing memory.", turn_num)
-                memory.compress()
-                time.sleep(SLEEP_BETWEEN_LLM_CALLS)
-
-            # Build context
+            # Build context — strategies self-manage compression now.
             context = memory.get_context(query=content)
 
-            # Build user prompt
-            if context:
-                user_prompt = RECALL_USER_TEMPLATE.format(
-                    context=context, question=content
-                )
-            else:
-                user_prompt = NO_CONTEXT_USER_TEMPLATE.format(question=content)
-
-            # LLM call
-            logger.debug(
-                "Turn %d: calling LLM (prompt_len=%d).", turn_num, len(user_prompt)
+            user_prompt = (
+                RECALL_USER_TEMPLATE.format(context=context, question=content)
+                if context
+                else NO_CONTEXT_USER_TEMPLATE.format(question=content)
             )
+
+            logger.debug("Turn %d: LLM call (prompt_chars=%d).", turn_num, len(user_prompt))
             response = llm.generate(user_prompt, use_stop_tokens=is_recall)
             logger.debug("Turn %d: response=%r", turn_num, response)
             time.sleep(SLEEP_BETWEEN_LLM_CALLS)
 
-            # Store exchange in memory
+            # Add to memory AFTER calling LLM so the recall question itself
+            # is not in the context when we ask it.
             memory.add_message("user", content)
             memory.add_message("assistant", response)
 
-            # Log to history
-            history.append(
-                {
-                    "turn": turn_num,
-                    "role": "user",
-                    "content": content,
-                    "is_recall": is_recall,
-                }
-            )
-            history.append(
-                {
-                    "turn": turn_num,
-                    "role": "assistant",
-                    "content": response,
-                    "is_recall": False,
-                }
-            )
+            history.append({"turn": turn_num, "role": "user",      "content": content,  "is_recall": is_recall})
+            history.append({"turn": turn_num, "role": "assistant",  "content": response, "is_recall": False})
 
-            # Record recall result
             if is_recall:
-                results.append(
-                    {
-                        "script_id": script_id,
-                        "strategy": strategy_name,
-                        "rep": rep,
-                        "turn": turn_num,
-                        "question": content,
-                        "target_fact_id": turn_obj.get("target_fact_id"),
-                        "ground_truth": turn_obj.get("ground_truth", []),
-                        "agent_response": response,
-                    }
-                )
+                results.append({
+                    "script_id":      script_id,
+                    "strategy":       strategy_name,
+                    "rep":            rep,
+                    "turn":           turn_num,
+                    "question":       content,
+                    "target_fact_id": turn_obj.get("target_fact_id"),
+                    "ground_truth":   turn_obj.get("ground_truth", []),
+                    "agent_response": response,
+                })
 
         else:
-            # Scripted assistant turn (not generated)
+            # Scripted assistant turn — add to memory only, no LLM call.
             memory.add_message("assistant", content)
-            history.append(
-                {"turn": turn_num, "role": "assistant", "content": content, "is_recall": False}
-            )
+            history.append({"turn": turn_num, "role": "assistant", "content": content, "is_recall": False})
 
     return results, history
 
@@ -186,7 +188,6 @@ def run_strategy(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
 
 def main() -> None:
     setup_logging(RESULTS_DIR)
@@ -203,34 +204,38 @@ def main() -> None:
     # ------------------------------------------------------------------
     scripts = load_scripts(SCRIPTS_DIR)
     for script in scripts:
-        warnings = validate_script(script)
-        for w in warnings:
+        for w in validate_script(script):
             logger.warning("Script validation: %s", w)
 
     # ------------------------------------------------------------------
     # LLM client
     # ------------------------------------------------------------------
-    groq_keys = filter_none_keys(
-        [
-            os.getenv("GROQ_API_KEY_1"),
-            os.getenv("GROQ_API_KEY_2"),
-            os.getenv("GROQ_API_KEY_3"),
-        ]
-    )
+    groq_keys = filter_none_keys([
+        os.getenv("GROQ_API_KEY_1"),
+        os.getenv("GROQ_API_KEY_2"),
+        os.getenv("GROQ_API_KEY_3"),
+    ])
     llm = SimpleGroqClient(groq_keys)
+
+    # ------------------------------------------------------------------
+    # Pre-create reusable memory instances.
+    # RAGMemory loads a sentence-transformer model at init — expensive.
+    # We create one instance per strategy and call reset() between reps
+    # instead of constructing a new object each time.
+    # ------------------------------------------------------------------
+    reusable_memory: dict[str, Any] = {}
+    for name, cls, kwargs in STRATEGIES:
+        if not getattr(cls, "NEEDS_LLM", False):
+            # Only pre-create non-LLM strategies (RAGMemory, BaselineMemory).
+            # LLM strategies need the llm arg and are cheap to construct.
+            reusable_memory[name] = _make_memory(cls, kwargs, llm)
 
     # ------------------------------------------------------------------
     # CSV setup
     # ------------------------------------------------------------------
     fieldnames = [
-        "script_id",
-        "strategy",
-        "repetition",
-        "turn",
-        "question",
-        "target_fact_id",
-        "agent_response",
-        "ground_truth",
+        "script_id", "strategy", "repetition", "turn",
+        "question", "target_fact_id", "agent_response", "ground_truth",
     ]
 
     total_runs = len(scripts) * len(STRATEGIES) * REPETITIONS
@@ -243,53 +248,49 @@ def main() -> None:
         for script in scripts:
             script_id = script.get("script_id", "unknown")
 
-            for strategy_name, strategy_class, _ in STRATEGIES:
+            for strategy_name, strategy_class, strategy_kwargs in STRATEGIES:
                 for rep in range(REPETITIONS):
                     logger.info(
                         "Running: script=%s strategy=%s rep=%d",
-                        script_id,
-                        strategy_name,
-                        rep,
+                        script_id, strategy_name, rep,
                     )
+
+                    # Use pre-created instance if available, else None (will be created fresh).
+                    memory_instance = reusable_memory.get(strategy_name)
 
                     try:
                         results, history = run_strategy(
                             script=script,
                             strategy_name=strategy_name,
                             strategy_class=strategy_class,
+                            strategy_kwargs=strategy_kwargs,
                             llm=llm,
                             script_id=script_id,
                             rep=rep,
+                            memory=memory_instance,
                         )
                     except Exception as exc:
                         logger.error(
                             "FAILED: script=%s strategy=%s rep=%d — %s",
-                            script_id,
-                            strategy_name,
-                            rep,
-                            exc,
+                            script_id, strategy_name, rep, exc,
                             exc_info=True,
                         )
                         pbar.update(1)
                         continue
 
-                    # Write recall results to CSV
                     for row in results:
-                        writer.writerow(
-                            {
-                                "script_id": row["script_id"],
-                                "strategy": row["strategy"],
-                                "repetition": row["rep"],
-                                "turn": row["turn"],
-                                "question": row["question"],
-                                "target_fact_id": row["target_fact_id"],
-                                "agent_response": row["agent_response"],
-                                "ground_truth": json.dumps(row["ground_truth"]),
-                            }
-                        )
+                        writer.writerow({
+                            "script_id":      row["script_id"],
+                            "strategy":       row["strategy"],
+                            "repetition":     row["rep"],
+                            "turn":           row["turn"],
+                            "question":       row["question"],
+                            "target_fact_id": row["target_fact_id"],
+                            "agent_response": row["agent_response"],
+                            "ground_truth":   json.dumps(row["ground_truth"]),
+                        })
                     csv_file.flush()
 
-                    # Save full conversation history
                     hist_path = save_conversation_history(
                         history=history,
                         out_dir=HISTORY_DIR,
@@ -298,11 +299,10 @@ def main() -> None:
                         rep=rep,
                     )
                     logger.debug("History saved to %s", hist_path)
-
                     pbar.update(1)
 
     pbar.close()
-    logger.info("Benchmark complete. Results saved to %s", output_csv)
+    logger.info("Benchmark complete. Results → %s", output_csv)
     print(f"\nDone. Results → {output_csv}")
 
 

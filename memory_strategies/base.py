@@ -7,9 +7,8 @@ class MemoryBase(ABC):
     """
     All memory strategies must implement this interface.
 
-    The get_context() signature accepts an optional query string so that
-    retrieval-based strategies (RAGMemory) can use it for vector search while
-    non-retrieval strategies safely ignore it.
+    get_context() accepts an optional query string so retrieval-based strategies
+    (RAGMemory) can use it for vector search while others ignore it.
     """
 
     @abstractmethod
@@ -23,10 +22,8 @@ class MemoryBase(ABC):
         Return the context string to prepend to the current prompt.
 
         Args:
-            query: The current user message. Used by RAG-based strategies for
-                   similarity search; ignored by others.
-        Returns:
-            A formatted string representing conversation history / summary.
+            query: The current user message. Used by RAGMemory for similarity
+                   search; ignored by other strategies.
         """
         ...
 
@@ -34,15 +31,18 @@ class MemoryBase(ABC):
     def compress(self) -> None:
         """
         Compress or consolidate memory.
-        Called after every N turns. No-op for strategies that don't compress.
+
+        For self-triggering strategies (HierarchicalMemory, RollingSummaryMemory),
+        this is an intentional no-op — compression fires inside add_message().
+        For BaselineMemory and RAGMemory this is also a no-op.
+        The method exists to satisfy the interface contract.
         """
         ...
 
     def reset(self) -> None:
         """
-        Reset all internal state.
-        Called between benchmark repetitions to prevent state bleed.
-        Subclasses MUST override this if they hold any mutable state.
+        Reset all internal state between benchmark repetitions.
+        Subclasses MUST override this.
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement reset() "

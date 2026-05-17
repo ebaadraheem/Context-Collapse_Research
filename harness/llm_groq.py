@@ -1,12 +1,27 @@
-"""Groq LLM client with per-key cooldown tracking and exponential back-off."""
+"""
+Groq LLM client with per-key cooldown tracking and exponential back-off.
 
-import itertools
+Key design points
+-----------------
+- max_tokens defaults to 30 for recall calls (short answers expected).
+  Compression/summarisation callers MUST pass a larger max_tokens explicitly
+  (e.g. 300–600) — failing to do so silently truncates summaries.
+- use_stop_tokens=True adds stop sequences for recall calls only.
+- system_prompt defaults to RECALL_SYSTEM_PROMPT when use_stop_tokens=True,
+  and to "" (no system prompt) otherwise, so compression calls get a clean slate.
+"""
+
+from __future__ import annotations
+
 import time
 
 from groq import Groq
 
 
-# System prompt used for all benchmark inference calls.
+# ---------------------------------------------------------------------------
+# System prompt for recall calls
+# ---------------------------------------------------------------------------
+
 RECALL_SYSTEM_PROMPT = """\
 You are a fact-recall assistant operating inside a benchmark.
 Your only job is to recall a specific fact from the conversation history provided.
@@ -22,9 +37,10 @@ Rules:
 class SimpleGroqClient:
     """
     Groq API wrapper with:
-    - Per-key cooldown tracking (mirrors RotatingGeminiClient).
-    - Exponential back-off on 429 / rate-limit errors.
-    - Separate system-prompt support for benchmark inference vs compression calls.
+    - Per-key cooldown tracking with exponential back-off on rate limits.
+    - Explicit max_tokens per call type (recall vs compression).
+    - system_prompt support passed as the 'system' role message.
+    - seed=42 for reproducibility.
     """
 
     DEFAULT_MODEL = "llama-3.3-70b-versatile"
@@ -45,28 +61,24 @@ class SimpleGroqClient:
 
     def _pick_available_key(self, cooldown_on_current: float = 0.0) -> None:
         """
-        Apply ``cooldown_on_current`` to the current key, then select the
-        next available key (lowest cooldown expiry).  If all keys are still
-        cooling, block until the earliest one is ready.
+        Apply cooldown_on_current to the current key, then select the next
+        available key. If all keys are cooling, block until the earliest is ready.
         """
         if cooldown_on_current > 0:
-            self.key_cooldown_until[self.current_key] = (
-                time.time() + cooldown_on_current
-            )
+            self.key_cooldown_until[self.current_key] = time.time() + cooldown_on_current
 
         now = time.time()
         available = [k for k, t in self.key_cooldown_until.items() if t <= now]
+
         if available:
-            # Prefer a different key to spread load
             others = [k for k in available if k != self.current_key]
             chosen = others[0] if others else available[0]
         else:
-            # All keys on cooldown — wait for the earliest
-            earliest_key = min(self.key_cooldown_until, key=self.key_cooldown_until.get)
-            wait = self.key_cooldown_until[earliest_key] - now + 0.5
+            earliest = min(self.key_cooldown_until, key=self.key_cooldown_until.get)
+            wait = self.key_cooldown_until[earliest] - now + 0.5
             print(f"[Groq] All keys cooling. Waiting {wait:.1f}s …")
             time.sleep(wait)
-            chosen = earliest_key
+            chosen = earliest
 
         if chosen != self.current_key:
             self.current_key = chosen
@@ -89,25 +101,31 @@ class SimpleGroqClient:
         Generate a completion.
 
         Args:
-            prompt: The user-turn content.
-            system_prompt: Optional system message. Defaults to RECALL_SYSTEM_PROMPT
-                           when empty and use_stop_tokens is True (i.e. recall calls).
-            max_tokens: Token budget for the response.
-            max_attempts: Total retry budget across all keys.
-            use_stop_tokens: If True, add stop tokens that prevent the model from
-                             continuing past the answer (used for recall calls).
-                             Set to False for compression/summarisation calls.
+            prompt          : The user-turn content.
+            system_prompt   : Optional system message.
+                              Auto-set to RECALL_SYSTEM_PROMPT when
+                              use_stop_tokens=True and system_prompt is empty.
+            max_tokens      : Token budget for the response.
+                              *** Callers for compression MUST pass a larger value
+                              (e.g. 300–600). The default 30 is for recall only. ***
+            max_attempts    : Total retry budget across all keys.
+            use_stop_tokens : If True, adds stop sequences for recall calls.
+                              Set False for compression / judge calls.
+
         Returns:
-            The model's text response, stripped.
+            Stripped text response.
         """
+        # Auto-apply recall system prompt for recall calls.
         if not system_prompt and use_stop_tokens:
             system_prompt = RECALL_SYSTEM_PROMPT
 
-        messages = []
+        messages: list[dict] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        # Stop tokens prevent the model running past the answer for recall calls.
+        # Bare "\n" is intentionally excluded — it truncates multi-part answers.
         stop = ["\nQuestion:", "\nUser:", "\nAnswer:"] if use_stop_tokens else None
 
         last_exc: Exception | None = None
@@ -127,7 +145,7 @@ class SimpleGroqClient:
                 last_exc = exc
                 msg = str(exc).lower()
                 if "rate limit" in msg or "429" in msg:
-                    cooldown = 30 * (2 ** attempt)   # 30 / 60 / 120 / 240 / 480 s
+                    cooldown = 30 * (2 ** attempt)  # 30 / 60 / 120 / 240 / 480 s
                     print(
                         f"[Groq] Rate limit on key …{self.current_key[-6:]} "
                         f"(attempt {attempt + 1}/{max_attempts}). "
@@ -135,7 +153,6 @@ class SimpleGroqClient:
                     )
                     self._pick_available_key(cooldown_on_current=cooldown)
                 else:
-                    # Non-rate-limit error: short cooldown then rotate
                     print(f"[Groq] Error: {exc}. Rotating key.")
                     self._pick_available_key(cooldown_on_current=10)
 

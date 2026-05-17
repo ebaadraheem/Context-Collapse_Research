@@ -1,17 +1,20 @@
 """
 LLM judge for the context-collapse benchmark.
 
-Scoring pipeline:
-1. Fast path: if any ground-truth string is a substring of the agent response
-   (case-insensitive), return CORRECT immediately without an LLM call.
-2. Slow path: ask the LLM to judge whether the response conveys the same
-   information as any of the ground-truth answers.
+Scoring pipeline
+----------------
+1. Hard INCORRECT: empty response or exact "I don't know".
+2. Fast path: case-insensitive substring match against any ground-truth string.
+   No LLM call needed — returns CORRECT immediately.
+3. Slow path: LLM judge with a structured rubric.
+   Verdict extraction uses explicit ordered checking with word-boundary regex
+   to avoid "INCORRECT" matching before "CORRECT" (set iteration is undefined).
 
 Verdict levels
 --------------
-CORRECT  - The agent recalled the fact correctly (exact or semantically equivalent).
-PARTIAL  - The agent recalled part of a compound fact correctly.
-INCORRECT - The agent was wrong, hallucinated, or said "I don't know".
+CORRECT   — The agent recalled the fact correctly (exact or semantically equivalent).
+PARTIAL   — The agent recalled part of a compound fact correctly.
+INCORRECT — Wrong, hallucinated, or "I don't know".
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ _JUDGE_PROMPT = """\
 You are an impartial judge for a fact-recall benchmark.
 Determine whether the agent's response correctly answers the recall question.
 
-Fact ID      : {fact_id}
+Fact ID        : {fact_id}
 Recall question: {question}
 Ground truth (any one of these is acceptable):
 {ground_truth_list}
@@ -43,24 +46,32 @@ Agent response: "{agent_response}"
 Scoring rubric:
 - CORRECT  : The agent's response conveys the same information as at least one \
 ground-truth answer. Minor wording differences, unit variations, and \
-abbreviations are fine.
-- PARTIAL  : The agent recalled part of a compound fact (e.g. one of two required \
-values).
-- INCORRECT: The agent's response is wrong, hallucinated a different value, said \
-"I don't know", or left a blank.
+abbreviations are acceptable.
+- PARTIAL  : The agent recalled part of a compound fact (e.g. one of two \
+required values).
+- INCORRECT: The agent's response is wrong, hallucinated a different value, \
+said "I don't know", or is blank.
 
 Reply with ONLY one word: CORRECT, PARTIAL, or INCORRECT.
 
 Judgment:\
 """
 
-_VALID_VERDICTS = {"CORRECT", "PARTIAL", "INCORRECT"}
+# Ordered from most specific to least specific.
+# IMPORTANT: do NOT use a set here — "INCORRECT" contains "CORRECT" as a
+# substring, so checking sets in undefined order can return the wrong verdict.
+_VERDICT_ORDER = ["INCORRECT", "PARTIAL", "CORRECT"]
+
+# Word-boundary regex patterns — compiled once at module load.
+_VERDICT_RE = {v: re.compile(rf"\b{v}\b") for v in _VERDICT_ORDER}
+
+# Regex for the "I don't know" family of non-answers.
+_IDK_RE = re.compile(r"i\s+don'?t\s+know\.?", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
 # Core judge function
 # ---------------------------------------------------------------------------
-
 
 def judge_response(
     llm: Any,
@@ -73,29 +84,29 @@ def judge_response(
     Judge a single agent response against the ground truth.
 
     Args:
-        llm          : LLM client with ``generate(prompt, system_prompt, ...) -> str``.
-        fact_id      : Identifier of the fact being tested (for the prompt).
-        ground_truth : List of acceptable answer strings.
+        llm           : LLM client with generate(prompt, system_prompt, max_tokens,
+                        use_stop_tokens) -> str.
+        fact_id       : Identifier of the fact being tested.
+        ground_truth  : List of acceptable answer strings.
         agent_response: The agent's raw text response.
-        question     : The recall question (for context in the prompt).
+        question      : The recall question (for context in the judge prompt).
 
     Returns:
         One of "CORRECT", "PARTIAL", or "INCORRECT".
     """
-    # Normalise
     agent_norm = agent_response.strip().lower()
 
-    # Hard INCORRECT: empty or explicit "I don't know"
-    if not agent_norm or re.fullmatch(r"i\s+don'?t\s+know\.?", agent_norm):
+    # 1. Hard INCORRECT
+    if not agent_norm or _IDK_RE.fullmatch(agent_norm):
         return "INCORRECT"
 
-    # Fast path: exact substring match (case-insensitive)
+    # 2. Fast path — exact substring match (case-insensitive)
     for gt in ground_truth:
         if gt.strip().lower() in agent_norm:
             logger.debug("Fast-path CORRECT for fact_id=%s", fact_id)
             return "CORRECT"
 
-    # Slow path: LLM judge
+    # 3. Slow path — LLM judge
     gt_formatted = "\n".join(f"  - {gt}" for gt in ground_truth)
     prompt = _JUDGE_PROMPT.format(
         fact_id=fact_id,
@@ -104,10 +115,9 @@ def judge_response(
         agent_response=agent_response.strip(),
     )
 
-    # Use a neutral system prompt for judging (not the recall system prompt)
     judge_system = (
         "You are a precise, impartial evaluator. "
-        "Reply with exactly one word from the allowed set."
+        "Reply with exactly one word: CORRECT, PARTIAL, or INCORRECT."
     )
 
     try:
@@ -121,17 +131,18 @@ def judge_response(
         logger.warning("Judge LLM call failed for fact_id=%s: %s", fact_id, exc)
         return "INCORRECT"
 
-    verdict = raw.strip().upper()
+    verdict_upper = raw.strip().upper()
 
-    # Extract the verdict word even if the model adds punctuation
-    for v in _VALID_VERDICTS:
-        if v in verdict:
+    # Extract verdict using word-boundary regex in a safe fixed order.
+    # Order matters: check INCORRECT before CORRECT to avoid false CORRECT
+    # matches on the string "INCORRECT".
+    for v in _VERDICT_ORDER:
+        if _VERDICT_RE[v].search(verdict_upper):
             return v
 
     logger.warning(
-        "Unrecognised judge verdict '%s' for fact_id=%s. Defaulting to INCORRECT.",
-        verdict,
-        fact_id,
+        "Unrecognised judge verdict %r for fact_id=%s. Defaulting to INCORRECT.",
+        verdict_upper, fact_id,
     )
     return "INCORRECT"
 
@@ -140,15 +151,13 @@ def judge_response(
 # Batch scoring
 # ---------------------------------------------------------------------------
 
-
 def score_results_csv(
     results_csv: str,
     llm: Any,
     output_csv: str | None = None,
 ) -> pd.DataFrame:
     """
-    Load a benchmark results CSV, run the judge on every row, and return a
-    DataFrame with a ``judgment`` column added.
+    Load a benchmark results CSV, run the judge on every row, return scored DataFrame.
 
     Args:
         results_csv : Path to the CSV produced by run_benchmark.py.
@@ -156,12 +165,11 @@ def score_results_csv(
         output_csv  : If provided, write the scored DataFrame here.
 
     Returns:
-        DataFrame with columns: script_id, strategy, repetition, turn,
-        target_fact_id, agent_response, ground_truth, question, judgment.
+        DataFrame with original columns + 'judgment'.
     """
     df = pd.read_csv(results_csv)
 
-    # ground_truth column is stored as a JSON string
+    # ground_truth is stored as a JSON string — parse it back.
     df["ground_truth_parsed"] = df["ground_truth"].apply(
         lambda x: json.loads(x) if isinstance(x, str) else []
     )
@@ -178,11 +186,8 @@ def score_results_csv(
         judgments.append(verdict)
         logger.info(
             "script=%s strategy=%s turn=%s fact=%s → %s",
-            row.get("script_id"),
-            row.get("strategy"),
-            row.get("turn"),
-            row.get("target_fact_id"),
-            verdict,
+            row.get("script_id"), row.get("strategy"),
+            row.get("turn"), row.get("target_fact_id"), verdict,
         )
 
     df["judgment"] = judgments
@@ -198,52 +203,79 @@ def score_results_csv(
 # FRR computation
 # ---------------------------------------------------------------------------
 
-
 def compute_frr(df: pd.DataFrame, threshold: str = "CORRECT") -> pd.DataFrame:
     """
-    Compute Factual Retention Rate (FRR) per strategy × turn.
+    Compute Factual Retention Rate (FRR) per strategy × recall turn.
 
-    FRR@K = (number of CORRECT recalls at turn K) / (total recalls at turn K)
+    FRR@K = hits_at_K / total_at_K
 
     Args:
-        df        : Scored DataFrame with a ``judgment`` column.
-        threshold : ``"CORRECT"`` (strict) or ``"PARTIAL"`` (lenient, counts
-                    CORRECT + PARTIAL as hits).
+        df        : Scored DataFrame with a 'judgment' column.
+        threshold : 'CORRECT' (strict) or 'PARTIAL' (lenient: CORRECT + PARTIAL = hit).
 
     Returns:
-        DataFrame indexed by (strategy, turn) with columns: hits, total, frr.
+        DataFrame with columns: strategy, turn, hits, total, frr.
     """
-    if threshold == "PARTIAL":
-        hit_values = {"CORRECT", "PARTIAL"}
-    else:
-        hit_values = {"CORRECT"}
-
+    hit_values = {"CORRECT", "PARTIAL"} if threshold == "PARTIAL" else {"CORRECT"}
     df = df.copy()
     df["hit"] = df["judgment"].isin(hit_values).astype(int)
-
-    summary = (
+    return (
         df.groupby(["strategy", "turn"])
         .agg(hits=("hit", "sum"), total=("hit", "count"))
         .assign(frr=lambda d: d["hits"] / d["total"])
         .reset_index()
     )
-    return summary
 
 
 def compute_frr_by_distance(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute FRR by distance from fact injection (turn 1) to recall turn.
-    Useful for plotting how retention decays with distance.
+    Compute FRR by distance (turns) from fact injection to recall.
 
-    Assumes facts are always injected at turn 1.
+    Assumes facts are always injected at turn 1, so distance = turn - 1.
+
+    Returns:
+        DataFrame with columns: strategy, distance, hits, total, frr.
     """
     df = df.copy()
-    df["distance"] = df["turn"] - 1   # turns since injection
+    df["distance"] = df["turn"] - 1
     df["hit"] = (df["judgment"] == "CORRECT").astype(int)
-
     return (
         df.groupby(["strategy", "distance"])
         .agg(hits=("hit", "sum"), total=("hit", "count"))
         .assign(frr=lambda d: d["hits"] / d["total"])
         .reset_index()
     )
+
+
+def compute_compression_efficiency(
+    results_df: pd.DataFrame,
+    history_dir: str,
+) -> pd.DataFrame:
+    """
+    Compute average context length (chars) at each recall turn per strategy.
+    Useful for the paper's efficiency table (FRR vs token cost).
+
+    Reads JSONL history files from history_dir and measures the length of the
+    assistant's prompt context by approximating from stored history size.
+
+    Returns:
+        DataFrame with columns: strategy, turn, avg_context_chars.
+    """
+    import os, json, glob
+
+    rows = []
+    pattern = os.path.join(history_dir, "history_*.jsonl")
+    for fpath in glob.glob(pattern):
+        fname = os.path.basename(fpath)
+        # history_{script_id}_{strategy_name}_rep{rep}.jsonl
+        parts = fname.replace("history_", "").replace(".jsonl", "").rsplit("_rep", 1)
+        if len(parts) != 2:
+            continue
+        strategy_part = parts[0]
+        # strategy is the last segment after the last underscore-separated script_id
+        # This is approximate — a more robust approach encodes strategy in filename differently.
+        # For now skip and rely on the CSV for strategy info.
+        pass  # left as a hook for future implementation
+
+    logger.info("compute_compression_efficiency: not fully implemented yet.")
+    return pd.DataFrame(columns=["strategy", "turn", "avg_context_chars"])

@@ -1,17 +1,16 @@
-"""Baseline memory strategy: no compression, keep full raw history."""
+"""Baseline memory: no compression, keep full raw history."""
 
 from .base import MemoryBase
 
 
 class BaselineMemory(MemoryBase):
     """
-    Stores every message in full.
-    get_context() returns the entire conversation as a single string.
-    compress() does nothing.
-
-    This is the upper-bound reference: if other strategies score below this,
-    compression is causing fact loss.
+    Stores every message verbatim. get_context() returns the full conversation.
+    This is the upper-bound reference — other strategies should approach but
+    not exceed this FRR.
     """
+
+    NEEDS_LLM: bool = False
 
     def __init__(self) -> None:
         self.messages: list[dict] = []
@@ -25,8 +24,7 @@ class BaselineMemory(MemoryBase):
         return "\n".join(f"{m['role']}: {m['content']}" for m in self.messages)
 
     def compress(self) -> None:
-        # Intentionally a no-op: baseline keeps everything.
-        pass
+        pass  # intentional no-op
 
     def reset(self) -> None:
         self.messages = []
