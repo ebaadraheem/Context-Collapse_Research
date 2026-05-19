@@ -1,14 +1,7 @@
-"""Baseline memory: no compression, keep full raw history."""
-
 from .base import MemoryBase
 
 
 class BaselineMemory(MemoryBase):
-    """
-    Stores every message verbatim. get_context() returns the full conversation.
-    This is the upper-bound reference — other strategies should approach but
-    not exceed this FRR.
-    """
 
     NEEDS_LLM: bool = False
 

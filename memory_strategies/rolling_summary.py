@@ -1,11 +1,3 @@
-"""
-Rolling summarisation memory.
-
-Compression is self-triggered when context size exceeds token_budget.
-compress() is also a valid external entry point (called from the llm
-for strategies that do not self-trigger).
-"""
-
 from __future__ import annotations
 
 import time
@@ -37,18 +29,6 @@ Updated fact list:"""
 
 
 class RollingSummaryMemory(MemoryBase):
-    """
-    Keeps a running bullet-point fact list.
-
-    Raw messages accumulate since the last compression. When get_context() is
-    called or when add_message() detects the context exceeds token_budget, all
-    raw messages are compressed into the summary via an LLM call.
-
-    Args:
-        llm          : LLM client with generate(prompt, use_stop_tokens, max_tokens).
-        token_budget : Approximate token ceiling before self-triggering compression.
-        llm_sleep    : Seconds to sleep after each internal LLM compression call.
-    """
 
     NEEDS_LLM: bool = True
 
@@ -69,7 +49,6 @@ class RollingSummaryMemory(MemoryBase):
     # ------------------------------------------------------------------
 
     def _token_count(self) -> int:
-        """Approximate token count of the full context (summary + raw messages)."""
         return max(1, len(self.get_context()) // 4)
 
     # ------------------------------------------------------------------
@@ -78,22 +57,15 @@ class RollingSummaryMemory(MemoryBase):
 
     def add_message(self, role: str, content: str) -> None:
         self.raw_messages.append({"role": role, "content": content})
-        # Self-trigger compression when budget is exceeded.
         if self._token_count() > self.token_budget:
             self._do_compress()
 
     def compress(self) -> None:
-        """
-        External compression hook.
-
-        Called by the llm (run_benchmark.py). Delegates to _do_compress()
-        only when there are raw messages to process.
-        """
+        
         if self.raw_messages:
             self._do_compress()
 
     def _do_compress(self) -> None:
-        """Core compression logic — shared by add_message and compress."""
         if not self.raw_messages:
             return
 
@@ -121,7 +93,6 @@ class RollingSummaryMemory(MemoryBase):
 
         self.raw_messages = []
 
-        # Sleep after internal LLM call to avoid rate-limit bursts.
         time.sleep(self.llm_sleep)
 
     def get_context(self, query: str = "") -> str:

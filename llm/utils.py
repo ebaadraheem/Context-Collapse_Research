@@ -1,5 +1,3 @@
-"""Shared utilities for the context-collapse benchmark."""
-
 from __future__ import annotations
 
 import json
@@ -15,7 +13,6 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 def setup_logging(log_dir: str = "results", level: int = logging.INFO) -> None:
-    """Configure root logger to write to stdout and a timestamped log file."""
     os.makedirs(log_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = os.path.join(log_dir, f"benchmark_{ts}.log")
@@ -36,12 +33,7 @@ def setup_logging(log_dir: str = "results", level: int = logging.INFO) -> None:
 # ---------------------------------------------------------------------------
 
 def load_scripts(scripts_dir: str) -> list[dict]:
-    """
-    Load all JSON test scripts from scripts_dir.
 
-    Each file may contain a single script (dict) or a list of scripts.
-    Files are sorted for reproducibility (os.listdir order is OS-dependent).
-    """
     scripts: list[dict] = []
     path = Path(scripts_dir)
     if not path.is_dir():
@@ -77,10 +69,6 @@ def load_scripts(scripts_dir: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def validate_script(script: dict) -> list[str]:
-    """
-    Validate a single script dict. Returns a list of warning strings.
-    Empty list means the script is clean.
-    """
     warnings: list[str] = []
     sid = script.get("script_id", "<unknown>")
 
@@ -128,11 +116,6 @@ def save_conversation_history(
     strategy_name: str,
     rep: int,
 ) -> str:
-    """
-    Save full conversation history for one run to a JSONL file.
-    Each line: {"turn": int, "role": str, "content": str, "is_recall": bool}
-    Returns the path to the saved file.
-    """
     os.makedirs(out_dir, exist_ok=True)
     fname = f"history_{script_id}_{strategy_name}_rep{rep}.jsonl"
     fpath = os.path.join(out_dir, fname)
@@ -147,7 +130,6 @@ def save_conversation_history(
 # ---------------------------------------------------------------------------
 
 def set_seed(seed: int = 42) -> None:
-    """Seed Python random and numpy (if available)."""
     random.seed(seed)
     try:
         import numpy as np
@@ -162,5 +144,4 @@ def set_seed(seed: int = 42) -> None:
 # ---------------------------------------------------------------------------
 
 def filter_none_keys(api_keys: list[str | None]) -> list[str]:
-    """Filter out None / empty strings from a list of API key candidates."""
     return [k for k in api_keys if k]

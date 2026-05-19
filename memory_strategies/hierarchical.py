@@ -1,16 +1,3 @@
-"""
-Hierarchical memory: three-level architecture (working → episodic → semantic).
-
-Compression is self-triggered by token-budget pressure inside add_message(),
-so external compress() calls from the llm are intentional no-ops.
-
-Levels
-------
-Working memory  : raw recent messages, always included verbatim.
-Episodic memory : structured episode summaries flushed from working memory.
-Semantic memory : canonical long-term fact list distilled from episodic entries.
-"""
-
 from __future__ import annotations
 
 import time
@@ -78,26 +65,7 @@ _EMPTY_SENTINEL = "(none yet)"
 
 
 class HierarchicalMemory(MemoryBase):
-    """
-    Three-level hierarchical memory.
 
-    Compression is self-triggered by token-budget pressure, NOT by external
-    turn-count logic.  compress() is kept as a public no-op to satisfy the
-    MemoryBase interface — run_benchmark.py may call it harmlessly.
-
-    Token counting uses the standard 1 token ≈ 4 chars heuristic.
-
-    Args:
-        llm             : LLM client with generate(prompt, use_stop_tokens, max_tokens).
-        working_budget  : Approximate token ceiling for working memory before
-                          flushing to episodic (default 500 ≈ ~2000 chars).
-        episodic_budget : Approximate token ceiling for episodic store before
-                          distilling to semantic (default 1000 ≈ ~4000 chars).
-        llm_sleep       : Seconds to sleep after each internal LLM call to avoid
-                          rate-limit bursts from self-triggered compression.
-    """
-
-    # Detected by run_benchmark to decide whether to pass llm at init.
     NEEDS_LLM: bool = True
 
     def __init__(
@@ -138,15 +106,9 @@ class HierarchicalMemory(MemoryBase):
     # ------------------------------------------------------------------
 
     def _flush_working_to_episodic(self) -> None:
-        """
-        Compress the oldest working-memory messages into one episodic entry,
-        keeping the last 2 messages (most recent exchange) in working memory.
-
-        Guard: if working memory has ≤ 2 messages there is nothing to flush —
-        the budget is too small for even a single full exchange.
-        """
+    
         if len(self.working) <= 2:
-            return  # nothing to flush safely
+            return  
 
         to_compress = self.working[:-2]   # all but the last exchange
         self.working = self.working[-2:]  # retain most recent pair
@@ -163,14 +125,10 @@ class HierarchicalMemory(MemoryBase):
         if episode:
             self.episodic.append(episode)
 
-        # Sleep to avoid bursting the API from self-triggered calls.
         time.sleep(self.llm_sleep)
 
     def _flush_episodic_to_semantic(self) -> None:
-        """
-        Distil all episodic entries into the semantic fact list and clear the
-        episodic store.
-        """
+  
         if not self.episodic:
             return
 
@@ -208,13 +166,7 @@ class HierarchicalMemory(MemoryBase):
             self._flush_episodic_to_semantic()
 
     def compress(self) -> None:
-        """
-        External compression hook — intentional no-op.
 
-        HierarchicalMemory self-triggers compression inside add_message() based
-        on token-budget pressure. This method exists only to satisfy the
-        MemoryBase interface contract.
-        """
         pass
 
     def get_context(self, query: str = "") -> str:

@@ -4,12 +4,6 @@ from abc import ABC, abstractmethod
 
 
 class MemoryBase(ABC):
-    """
-    All memory strategies must implement this interface.
-
-    get_context() accepts an optional query string so retrieval-based strategies
-    (RAGMemory) can use it for vector search while others ignore it.
-    """
 
     @abstractmethod
     def add_message(self, role: str, content: str) -> None:

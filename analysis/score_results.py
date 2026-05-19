@@ -25,7 +25,7 @@ if _PROJECT_ROOT not in sys.path:
 from dotenv import load_dotenv
 
 from analysis.judge import compute_frr, compute_frr_by_distance, score_results_csv
-from llm.llm_groq import SimpleGroqClient
+from llm.llm_azure import AzureOpenAIClient
 from llm.utils import filter_none_keys, set_seed, setup_logging
 
 load_dotenv()
@@ -50,12 +50,14 @@ def main() -> None:
     setup_logging(results_dir)
     set_seed(42)
 
-    groq_keys = filter_none_keys([
-        os.getenv("GROQ_API_KEY_1"),
-        os.getenv("GROQ_API_KEY_2"),
-        os.getenv("GROQ_API_KEY_3"),
-    ])
-    llm = SimpleGroqClient(groq_keys)
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    azure_key = os.getenv("AZURE_OPENAI_KEY")
+    deployment_name = os.getenv("AZURE_DEPLOYMENT_NAME")
+
+    if not (azure_endpoint and azure_key and deployment_name):
+        raise RuntimeError("Azure credentials missing for judge")
+
+    llm = AzureOpenAIClient(azure_endpoint, azure_key, deployment_name)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     scored_csv   = os.path.join(results_dir, f"scored_{ts}.csv")
