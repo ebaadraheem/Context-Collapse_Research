@@ -5,6 +5,7 @@ from typing import Any
 
 import chromadb
 from sentence_transformers import SentenceTransformer
+import re
 
 from .base import MemoryBase
 
@@ -53,19 +54,31 @@ class RAGMemory(MemoryBase):
     # MemoryBase interface
     # ------------------------------------------------------------------
 
+    import re
+
     def add_message(self, role: str, content: str) -> None:
-        self.counter += 1
-        full_text = f"{role}: {content}"
-        embedding = self.encoder.encode(full_text).tolist()
-        self.collection.add(
-            documents=[full_text],
-            embeddings=[embedding],
-            ids=[str(self.counter)],
-            metadatas=[{"index": self.counter}],
-        )
+        # 1. Add to buffer for recent context
         self.message_buffer.append({"role": role, "content": content})
         if len(self.message_buffer) > self.buffer_size:
             self.message_buffer.pop(0)
+
+        # 2. Split long messages into sentences for accurate vector matching
+        sentences = re.split(r'(?<=[.!?]) +', content)
+        
+        for sentence in sentences:
+            if not sentence.strip():
+                continue
+                
+            self.counter += 1
+            chunk_text = f"{role}: {sentence.strip()}"
+            embedding = self.encoder.encode(chunk_text).tolist()
+            
+            self.collection.add(
+                documents=[chunk_text],
+                embeddings=[embedding],
+                ids=[str(self.counter)],
+                metadatas=[{"index": self.counter}],
+            )
 
     def get_context(self, query: str = "") -> str:
        

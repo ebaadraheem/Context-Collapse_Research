@@ -65,9 +65,9 @@ Recall question: {question}"""
 
 STRATEGIES: list[tuple[str, type, dict]] = [
     # ("baseline",        BaselineMemory,      {}),
-    # ("rolling_summary", RollingSummaryMemory, {"token_budget": 1500}),
-    # ("hierarchical",    HierarchicalMemory,   {"working_budget": 500, "episodic_budget": 1000}),
-    ("rag",             RAGMemory,            {"k": 6, "buffer_size": 10, "alpha": 0.3}),
+    # ("rolling_summary", RollingSummaryMemory, {"token_budget": 400}),
+    ("hierarchical",    HierarchicalMemory,   {"working_budget": 300, "episodic_budget": 600}),
+    # ("rag",             RAGMemory,            {"k": 8, "buffer_size": 6, "alpha": 0.7}),
 ]
 logger = logging.getLogger(__name__)
 
