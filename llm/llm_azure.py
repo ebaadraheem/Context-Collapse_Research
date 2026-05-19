@@ -1,43 +1,100 @@
 """
-Azure OpenAI client for o4-mini with inference‑friendly system prompt.
+Azure OpenAI client for o4-mini (and compatible models).
+
+Root causes fixed vs the original
+-----------------------------------
+1. RECALL_SYSTEM_PROMPT referenced "conversation history above" — but the
+   history lives in the USER message, not above the system prompt.  The model
+   was told to look somewhere the history wasn't, so it always fell through to
+   "I don't know".  System prompt now tells the model WHERE the history is.
+
+2. use_stop_tokens controlled both stop sequences AND system-prompt injection.
+   For o4-mini (a reasoning model) stop sequences are unreliable and can cut
+   the answer mid-sentence.  Stop tokens are now removed entirely; we rely on
+   max_completion_tokens instead.
+
+3. max_tokens=150 was too tight for o4-mini which emits a brief chain-of-thought
+   before the answer.  Recall default raised to 300; compression callers pass
+   their own value explicitly.
+
+4. Non-recall turns (use_stop_tokens=False) received NO system prompt at all,
+   so the model had no instruction context for normal conversation turns.
+   Added a lightweight CONVERSATION_SYSTEM_PROMPT for those turns.
+
+5. Added a COMPRESSION_SYSTEM_PROMPT so memory strategy LLM calls
+   (rolling summary, hierarchical) get explicit fact-preservation instructions
+   instead of inheriting the recall prompt.
 """
 
 from __future__ import annotations
 
 import time
+import logging
+
 import openai
 from openai import AzureOpenAI
 
-# New system prompt that encourages inference from conversation history
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# System prompts
+# ---------------------------------------------------------------------------
+
+# Used for recall turns (is_recall=True).
+# CRITICAL: tells the model the history is inside THIS message, not "above".
 RECALL_SYSTEM_PROMPT = """\
-You are a fact-recall assistant. Use the conversation history above to answer the user's question.
+You are a precise fact-recall assistant.
 
-Rules:
-- If the user asks about a deadline, date, amount, name, or percentage, extract that exact value from the history.
-- If the user asks whether something is correct, compare it to the history and answer with "Yes" or "No", then provide the correct fact if needed.
-- If the question is indirect (e.g., "Should we build a buffer?"), infer the answer from the relevant facts in the history.
-- Answer concisely in one short sentence or phrase.
-- If the answer is truly not present in the history, say "I don't know".
+The user's message contains two sections:
+  1. "Conversation history:" – a transcript of the prior conversation.
+  2. "Recall question:" – a specific question about a fact from that history.
 
-Examples:
-Q: "Patricia has a meeting in mid-March. Should we build a buffer?" 
-History: "Internal review deadline is March 10, 2025."
-A: "Yes, because the deadline is March 10, which is before mid-March."
-
-Q: "The draft says 99% uptime. Is that right?"
-History: "SLA uptime requirement is 99.5% monthly."
-A: "No, it should be 99.5%."
-
-Now answer the user's question based on the conversation history above.
+Your task:
+- Read the conversation history carefully.
+- Find the specific fact the recall question is asking about.
+- Answer with ONLY the exact value from the history (name, number, date,
+  dollar amount, percentage, location, etc.).
+- Do NOT explain, paraphrase, or add context.
+- If the exact answer is not present in the conversation history,
+  respond with exactly: I don't know
+- Maximum answer length: 15 words.
 """
 
+# Used for non-recall (normal conversation) turns.
+CONVERSATION_SYSTEM_PROMPT = """\
+You are a helpful assistant participating in a professional conversation.
+Use any conversation history provided to give relevant, concise responses.
+"""
+
+# Used by memory strategies when calling the LLM for compression/summarisation.
+COMPRESSION_SYSTEM_PROMPT = """\
+You are a conversation summariser for a fact-retention benchmark.
+Your output is a bullet-point fact list.
+Preserve ALL specific values EXACTLY as stated: names, numbers, dates,
+dollar amounts, locations, identifiers, percentages, durations, codes.
+Do NOT paraphrase or round any value.
+"""
+
+
 class AzureOpenAIClient:
+    """
+    Thin wrapper around Azure OpenAI chat completions.
+
+    Args:
+        azure_endpoint   : Your Azure OpenAI endpoint URL.
+        api_key          : Azure OpenAI API key.
+        deployment_name  : Model deployment name (e.g. "o4-mini").
+        api_version      : Azure OpenAI API version string.
+        max_retries      : Number of retry attempts on transient errors.
+        base_sleep       : Base sleep time (seconds) for exponential back-off.
+    """
+
     def __init__(
         self,
         azure_endpoint: str,
         api_key: str,
         deployment_name: str,
-        api_version: str = "2024-12-01-preview",
+        api_version: str = "2025-01-01-preview",
         max_retries: int = 5,
         base_sleep: float = 10.0,
     ) -> None:
@@ -49,28 +106,55 @@ class AzureOpenAIClient:
         self.deployment_name = deployment_name
         self.max_retries = max_retries
         self.base_sleep = base_sleep
-        self._call_count = 0
+        self._call_count: int = 0
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
 
     def get_call_count(self) -> int:
+        """Return the total number of successful generate() calls so far."""
         return self._call_count
 
     def generate(
         self,
         prompt: str,
         system_prompt: str = "",
-        max_tokens: int = 150,
+        max_tokens: int = 300,
         use_stop_tokens: bool = True,
     ) -> str:
-        # Use the inference‑friendly system prompt for recall turns
-        if use_stop_tokens and not system_prompt:
-            system_prompt = RECALL_SYSTEM_PROMPT
+        """
+        Call Azure OpenAI and return the text response.
 
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+        Args:
+            prompt          : The user-role message (includes conversation
+                              history inline when relevant).
+            system_prompt   : Override the system prompt.  If empty:
+                                - use_stop_tokens=True  → RECALL_SYSTEM_PROMPT
+                                - use_stop_tokens=False → CONVERSATION_SYSTEM_PROMPT
+                              Pass an explicit value for compression calls.
+            max_tokens      : Maximum completion tokens.
+                              • Recall turns:      300  (default)
+                              • Compression turns: 400–600 (caller sets this)
+                              • Judge turns:       20
+            use_stop_tokens : True  = recall turn → use RECALL_SYSTEM_PROMPT.
+                              False = other turn  → use CONVERSATION_SYSTEM_PROMPT.
+                              (Ignored if system_prompt is explicitly provided.)
+        """
+        # Resolve system prompt
+        if not system_prompt:
+            system_prompt = (
+                RECALL_SYSTEM_PROMPT
+                if use_stop_tokens
+                else CONVERSATION_SYSTEM_PROMPT
+            )
 
-        last_exception = None
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": prompt},
+        ]
+
+        last_exception: Exception | None = None
         for attempt in range(self.max_retries):
             try:
                 response = self.client.chat.completions.create(
@@ -79,16 +163,45 @@ class AzureOpenAIClient:
                     max_completion_tokens=max_tokens,
                 )
                 self._call_count += 1
+
                 content = response.choices[0].message.content
-                return content.strip() if content else "I don't know"
+                if content is None:
+                    # o4-mini can return None content on content-filter hits
+                    logger.warning(
+                        "Azure returned None content (attempt %d). "
+                        "Finish reason: %s",
+                        attempt + 1,
+                        response.choices[0].finish_reason,
+                    )
+                    return "I don't know"
+
+                result = content.strip()
+                return result if result else "I don't know"
+
             except openai.RateLimitError as exc:
                 last_exception = exc
                 wait = self.base_sleep * (2 ** attempt)
-                print(f"[Azure] Rate limit hit. Retry {attempt+1}/{self.max_retries} after {wait:.1f}s")
+                logger.warning(
+                    "[Azure] Rate limit. Retry %d/%d after %.1fs",
+                    attempt + 1, self.max_retries, wait,
+                )
                 time.sleep(wait)
+
+            except openai.BadRequestError as exc:
+                # Content policy or malformed request — not retryable
+                logger.error("[Azure] BadRequestError (not retryable): %s", exc)
+                raise
+
             except Exception as exc:
                 last_exception = exc
-                print(f"[Azure] Error: {exc}. Retry {attempt+1}/{self.max_retries}")
-                time.sleep(2)
+                wait = 2.0 * (attempt + 1)
+                logger.warning(
+                    "[Azure] Error: %s. Retry %d/%d after %.1fs",
+                    exc, attempt + 1, self.max_retries, wait,
+                )
+                time.sleep(wait)
 
-        raise RuntimeError(f"Azure OpenAI failed after {self.max_retries} attempts. Last error: {last_exception}")
+        raise RuntimeError(
+            f"Azure OpenAI failed after {self.max_retries} attempts. "
+            f"Last error: {last_exception}"
+        )
