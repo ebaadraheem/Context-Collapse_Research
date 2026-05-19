@@ -50,6 +50,8 @@ class RAGMemory(MemoryBase):
 
     NEEDS_LLM: bool = False
 
+    # Inside RAGMemory.__init__
+
     def __init__(
         self,
         embedding_model: str = "models/all-MiniLM-L6-v2",
@@ -57,21 +59,26 @@ class RAGMemory(MemoryBase):
         buffer_size: int = 4,
         alpha: float = 0.7,
         encoder=None,
+        persist_dir: str = None,        # <-- new argument
     ) -> None:
         self.embedding_model_name = embedding_model
         self.k = k
         self.buffer_size = buffer_size
         self.alpha = alpha
-
-        # Accept a pre-loaded encoder to avoid downloading/loading per worker.
-        # SentenceTransformer.encode() is thread-safe (read-only inference).
         self.encoder = encoder if encoder is not None else SentenceTransformer(embedding_model)
-        self._chroma = chromadb.Client()
+
+        # Use persistent client with a unique directory
+        if persist_dir is None:
+            import tempfile
+            persist_dir = tempfile.mkdtemp(prefix="chroma_rag_")
+        self.persist_dir = persist_dir
+        self._chroma = chromadb.PersistentClient(path=persist_dir)
+
         self._collection_name = f"conv_{uuid.uuid4().hex}"
         self.collection = self._chroma.create_collection(self._collection_name)
 
         self.message_buffer: list[dict] = []
-        self.counter: int = 0  # total messages stored (used as insertion index)
+        self.counter: int = 0
 
     # ------------------------------------------------------------------
     # Scoring
@@ -172,12 +179,15 @@ class RAGMemory(MemoryBase):
         pass
 
     def reset(self) -> None:
-        """Delete the old ChromaDB collection and create a fresh one."""
         try:
             self._chroma.delete_collection(self._collection_name)
         except Exception:
             pass
+        import shutil
+        shutil.rmtree(self.persist_dir, ignore_errors=True)
+        # Then recreate everything (or just let the next run create a new instance)
         self._collection_name = f"conv_{uuid.uuid4().hex}"
+        self._chroma = chromadb.PersistentClient(path=self.persist_dir)
         self.collection = self._chroma.create_collection(self._collection_name)
         self.message_buffer = []
         self.counter = 0

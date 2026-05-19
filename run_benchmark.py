@@ -57,9 +57,9 @@ load_dotenv()
 SCRIPTS_DIR             = "test_scripts"
 RESULTS_DIR             = "results"
 HISTORY_DIR             = os.path.join(RESULTS_DIR, "histories")
-REPETITIONS             = 2
-NUM_WORKERS             = 2      # one per Groq key
-SLEEP_BETWEEN_LLM_CALLS = 0.1   # reduced from 0.5 — each worker has its own key
+REPETITIONS             = 5
+NUM_WORKERS             = 5      # one per Groq key
+SLEEP_BETWEEN_LLM_CALLS = 2  
 
 # ---------------------------------------------------------------------------
 # Prompts
@@ -238,12 +238,12 @@ def worker(
     llm = SimpleGroqClient([api_key])
 
     # Pre-create reusable non-LLM memory instances per worker.
-    # This avoids reloading the sentence-transformer model on every rep.
     reusable: dict[str, object] = {}
     for name, cls, kwargs in STRATEGIES:
         if not getattr(cls, "NEEDS_LLM", False):
             if cls is RAGMemory and shared_encoder is not None:
-                reusable[name] = cls(encoder=shared_encoder, **kwargs)
+                rag_dir = os.path.join("results", "chroma", f"worker_{worker_id}")
+                reusable[name] = cls(encoder=shared_encoder, persist_dir=rag_dir, **kwargs)
             else:
                 reusable[name] = _make_memory(cls, kwargs, llm)
 
