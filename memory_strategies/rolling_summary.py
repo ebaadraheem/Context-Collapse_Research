@@ -16,10 +16,14 @@ Your job is to produce a bullet-point fact list from the conversation below.
 CRITICAL RULES:
 1. Preserve ALL specific values EXACTLY as stated: names, numbers, dates, dollar amounts,
    locations, identifiers, percentages, durations. Do NOT paraphrase them.
-2. Write one fact per bullet line, e.g. "- Deadline: March 10"
-3. Do NOT add any information not present in the conversation.
-4. Do NOT omit any fact, even if it seems minor.
-5. Integrate the existing summary (if provided) with the new messages.
+2. If a value is not present, write `[missing]` instead of inventing a number.
+3. Write one fact per bullet line, e.g. "- Deadline: March 10"
+4. Do NOT add any information not present in the conversation.
+5. Never invent facts or numbers.
+6. Do NOT omit any fact, even if it seems minor.
+7. Merge the existing summary (if provided) with the new messages. Keep all facts from
+   the existing summary unless they are directly contradicted by new information.
+   If contradicted, keep both with a note: e.g., "- SLA uptime: 99.5% [updated] / 99% [previous]"
 
 {existing_summary_block}
 New messages:

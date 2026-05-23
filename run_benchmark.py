@@ -25,18 +25,23 @@ from memory_strategies import (
     RAGMemory,
     RollingSummaryMemory,
 )
+import argparse
 
 load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--scripts_dir", default="test_scripts")
+parser.add_argument("--output_suffix", default="")
+args = parser.parse_args()
 
-SCRIPTS_DIR             = "test_scripts"
+SCRIPTS_DIR = args.scripts_dir
 RESULTS_DIR             = "results"
 HISTORY_DIR             = os.path.join(RESULTS_DIR, "histories")
 REPETITIONS             = 5                     
-SLEEP_BETWEEN_LLM_CALLS = 0.2                   # seconds between each LLM call (Azure throttle)
+SLEEP_BETWEEN_LLM_CALLS = 0.0                # seconds between each LLM call (Azure throttle)
 POST_RUN_SLEEP          = 0.0                   # extra pause between full strategy runs
 
 # ---------------------------------------------------------------------------
@@ -49,11 +54,7 @@ Conversation history:
 
 Recall question: {question}
 
-INSTRUCTIONS:
-- If the question asks "Is that right?" or "Should we...", answer with "Yes" or "No" first, then explain briefly.
-- If the question asks for a specific fact (e.g., "Who is the lead?"), give the exact name/value.
-- Use the conversation history to infer the answer when needed.
-- Keep your answer under 20 words.
+Answer based only on the conversation history. Keep your answer under 20 words.
 """
 
 NO_CONTEXT_USER_TEMPLATE = """\
@@ -64,10 +65,10 @@ Recall question: {question}"""
 # ---------------------------------------------------------------------------
 
 STRATEGIES: list[tuple[str, type, dict]] = [
-    # ("baseline",        BaselineMemory,      {}),
-    # ("rolling_summary", RollingSummaryMemory, {"token_budget": 400}),
+    ("baseline",        BaselineMemory,      {}),
     ("hierarchical",    HierarchicalMemory,   {"working_budget": 300, "episodic_budget": 600}),
-    # ("rag",             RAGMemory,            {"k": 8, "buffer_size": 6, "alpha": 0.7}),
+    ("rag",             RAGMemory,            {"k": 8, "buffer_size": 6, "alpha": 0.7}),
+    ("rolling_summary", RollingSummaryMemory, {"token_budget": 400}),
 ]
 logger = logging.getLogger(__name__)
 
@@ -194,8 +195,9 @@ def main() -> None:
     os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(HISTORY_DIR, exist_ok=True)
 
-    timestamp  = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_csv = os.path.join(RESULTS_DIR, f"benchmark_results_{timestamp}.csv")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_name = f"benchmark_results_{timestamp}_{args.output_suffix}.csv" if args.output_suffix else f"benchmark_results_{timestamp}.csv"
+    output_csv = os.path.join(RESULTS_DIR, csv_name)
 
     # Load Azure credentials
     azure_endpoint   = os.getenv("AZURE_OPENAI_ENDPOINT")

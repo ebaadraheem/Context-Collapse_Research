@@ -303,7 +303,7 @@ def main() -> None:
     # Save and print formatted table
     formatted = print_table(table)
     out_txt = os.path.join(results_dir, f"efficiency_table_{ts}.txt")
-    with open(out_txt, "w") as f:
+    with open(out_txt, "w", encoding="utf-8") as f:
         f.write(formatted + "\n")
 
     print("\n" + formatted)

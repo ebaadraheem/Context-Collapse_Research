@@ -16,14 +16,16 @@ CRITICAL RULES:
 1. Preserve ALL specific values EXACTLY as stated: names, numbers, dates, dollar \
 amounts, locations, identifiers, percentages, durations, codes.
 2. Do NOT paraphrase or round numbers. "$4.2M" must stay "$4.2M", not "over four million".
-3. Write in this exact format:
+3. If a value is not present in the fragment, write `[missing]` instead of inventing a number.
+4. Write in this exact format:
    Topic: <what was being discussed, one short phrase>
    Facts:
    - <fact 1>
    - <fact 2>
    Outcome: <what was concluded or left open, one sentence>
-4. Do NOT add any information not present in the conversation fragment.
-5. Do NOT omit any fact, even if it seems minor.
+5. Do NOT add any information not present in the conversation fragment.
+6. Never invent facts or numbers.
+7. Do NOT omit any fact, even if it seems minor.
 
 Conversation fragment:
 {text}
@@ -40,16 +42,18 @@ CRITICAL RULES:
 1. Preserve ALL specific values EXACTLY as stated in both sources: names, numbers, \
 dates, dollar amounts, locations, identifiers, percentages, durations, codes.
 2. Do NOT paraphrase or round any value.
-3. If the same fact appears in both sources with DIFFERENT values, keep BOTH and \
+3. If a value is missing from both sources, write `[unknown]` instead of inventing a number.
+4. If the same fact appears in both sources with DIFFERENT values, keep BOTH and \
 mark the conflict: "- Contract value: $4.2M [original] / $4.5M [updated]"
-4. Remove exact duplicates — if the same fact appears twice with the same value, keep one.
-5. Output format: one fact per bullet line. Examples:
+5. Remove exact duplicates — if the same fact appears twice with the same value, keep one.
+6. Output format: one fact per bullet line. Examples:
    - Deadline: March 10
    - Contract value: $4.2M
    - Governing law: Delaware
    - Liability cap: 100% of contract value
-6. Do NOT add any information not present in either source.
-7. Do NOT omit any fact, even if it seems minor.
+7. Do NOT add any information not present in either source.
+8. Never invent facts or numbers.
+9. Do NOT omit any fact, even if it seems minor.
 
 Existing semantic fact list:
 {existing}

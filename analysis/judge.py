@@ -1,22 +1,3 @@
-"""
-LLM judge for the context-collapse benchmark.
-
-Scoring pipeline
-----------------
-1. Hard INCORRECT: empty response or exact "I don't know".
-2. Fast path: case-insensitive substring match against any ground-truth string.
-   No LLM call needed — returns CORRECT immediately.
-3. Slow path: LLM judge with a structured rubric.
-   Verdict extraction uses explicit ordered checking with word-boundary regex
-   to avoid "INCORRECT" matching before "CORRECT" (set iteration is undefined).
-
-Verdict levels
---------------
-CORRECT   — The agent recalled the fact correctly (exact or semantically equivalent).
-PARTIAL   — The agent recalled part of a compound fact correctly.
-INCORRECT — Wrong, hallucinated, or "I don't know".
-"""
-
 from __future__ import annotations
 
 import json
@@ -57,9 +38,7 @@ Reply with ONLY one word: CORRECT, PARTIAL, or INCORRECT.
 Judgment:\
 """
 
-# Ordered from most specific to least specific.
-# IMPORTANT: do NOT use a set here — "INCORRECT" contains "CORRECT" as a
-# substring, so checking sets in undefined order can return the wrong verdict.
+# Ordered from most specific to least specific. This order is critical for the regex matching logic in judge_response().
 _VERDICT_ORDER = ["INCORRECT", "PARTIAL", "CORRECT"]
 
 # Word-boundary regex patterns — compiled once at module load.
@@ -80,20 +59,7 @@ def judge_response(
     agent_response: str,
     question: str = "",
 ) -> str:
-    """
-    Judge a single agent response against the ground truth.
 
-    Args:
-        llm           : LLM client with generate(prompt, system_prompt, max_tokens,
-                        use_stop_tokens) -> str.
-        fact_id       : Identifier of the fact being tested.
-        ground_truth  : List of acceptable answer strings.
-        agent_response: The agent's raw text response.
-        question      : The recall question (for context in the judge prompt).
-
-    Returns:
-        One of "CORRECT", "PARTIAL", or "INCORRECT".
-    """
     agent_norm = agent_response.strip().lower()
 
     # 1. Hard INCORRECT
@@ -133,9 +99,6 @@ def judge_response(
 
     verdict_upper = raw.strip().upper()
 
-    # Extract verdict using word-boundary regex in a safe fixed order.
-    # Order matters: check INCORRECT before CORRECT to avoid false CORRECT
-    # matches on the string "INCORRECT".
     for v in _VERDICT_ORDER:
         if _VERDICT_RE[v].search(verdict_upper):
             return v
@@ -156,17 +119,7 @@ def score_results_csv(
     llm: Any,
     output_csv: str | None = None,
 ) -> pd.DataFrame:
-    """
-    Load a benchmark results CSV, run the judge on every row, return scored DataFrame.
-
-    Args:
-        results_csv : Path to the CSV produced by run_benchmark.py.
-        llm         : LLM client used for slow-path judging.
-        output_csv  : If provided, write the scored DataFrame here.
-
-    Returns:
-        DataFrame with original columns + 'judgment'.
-    """
+ 
     df = pd.read_csv(results_csv)
 
     # ground_truth is stored as a JSON string — parse it back.

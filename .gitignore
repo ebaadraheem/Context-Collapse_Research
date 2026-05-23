@@ -10,3 +10,6 @@ test_scripts/
 *.log
 models/
 results/
+plot*.png
+plot*.pdf
+legal_results/
