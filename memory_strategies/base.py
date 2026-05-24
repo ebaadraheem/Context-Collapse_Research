@@ -14,10 +14,6 @@ class MemoryBase(ABC):
     def get_context(self, query: str = "") -> str:
         """
         Return the context string to prepend to the current prompt.
-
-        Args:
-            query: The current user message. Used by RAGMemory for similarity
-                   search; ignored by other strategies.
         """
         ...
 
@@ -36,7 +32,6 @@ class MemoryBase(ABC):
     def reset(self) -> None:
         """
         Reset all internal state between benchmark repetitions.
-        Subclasses MUST override this.
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement reset() "

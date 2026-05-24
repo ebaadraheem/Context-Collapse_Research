@@ -1,108 +1,171 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import glob
+import numpy as np
+import pandas as pd
 
-# Set style for academic aesthetic
-plt.style.use('ggplot')
-domains = ['legal', 'medical', 'tech', 'travel']
+# ==========================================
+# GLOBAL ACADEMIC STYLING
+# ==========================================
+plt.style.use('default')
+plt.rcParams.update({
+    'font.size': 12,
+    'font.family': 'serif',
+    'axes.titlesize': 14,
+    'axes.labelsize': 12,
+    'xtick.labelsize': 11,
+    'ytick.labelsize': 11,
+    'legend.fontsize': 11,
+    'figure.autolayout': True,
+    'axes.grid': True,
+    'grid.alpha': 0.3,
+    'axes.edgecolor': 'black',
+    'axes.linewidth': 1
+})
 
-# --- Data Loading and Prep ---
+# Academic Color Palette
+color_base = '#c0392b'  # Crimson Red
+color_hier = '#2980b9'  # Navy Blue
+color_rag = '#27ae60'   # Forest Green
+color_roll = '#7f8c8d'  # Neutral Gray
 
-# 1. Scored Data Analysis (Overall FRR, Domain FRR)
-scored_dfs = []
-for d in domains:
-    df = pd.read_csv(f'results/scored_{d}.csv')
-    df['domain'] = d
-    scored_dfs.append(df)
-scored_all = pd.concat(scored_dfs, ignore_index=True)
-scored_all['is_correct_lenient'] = scored_all['judgment'].isin(['CORRECT', 'PARTIAL']).astype(int)
+# ==========================================
+# PLOT 1: THE PRIMACY EFFECT
+# ==========================================
+def plot_primacy_effect():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    
+    # X-axis distances
+    distances = [4, 9, 14, 19, 24]
+    
+    # Y-axis data 
+    baseline = [26.0, 29.0, 20.5, 24.0, 45.5]
+    hierarchical = [22.5, 27.5, 20.0, 23.5, 42.0]
+    rag = [27.5, 25.5, 13.5, 18.5, 34.5]
+    rolling = [18.0, 26.0, 19.5, 21.5, 26.5]
 
-frr_overall = scored_all.groupby('strategy')['is_correct_lenient'].mean().reset_index()
-frr_domain = scored_all.groupby(['strategy', 'domain'])['is_correct_lenient'].mean().unstack()
+    ax.plot(distances, baseline, marker='o', markersize=8, linewidth=2.5, color=color_base, label='Baseline')
+    ax.plot(distances, hierarchical, marker='s', markersize=8, linewidth=2.5, color=color_hier, label='Hierarchical')
+    ax.plot(distances, rag, marker='^', markersize=8, linewidth=2.5, color=color_rag, label='RAG')
+    ax.plot(distances, rolling, marker='d', markersize=8, linewidth=2.5, color=color_roll, label='Rolling Summary')
 
-# 2. Efficiency Analysis
-eff_dfs = []
-for d in domains:
-    df = pd.read_csv(f'results/efficiency_table_{d}.csv')
-    df['domain'] = d
-    eff_dfs.append(df)
-eff_all = pd.concat(eff_dfs, ignore_index=True)
-eff_summary = eff_all.groupby('strategy')[['avg_context_tokens', 'llm_calls_per_run', 'context_reduction_pct']].mean().reset_index()
-eff_summary = pd.merge(eff_summary, frr_overall, on='strategy')
+    # ax.set_title('The Primacy Effect: Factual Retention Rate vs. Distance', pad=15)
+    ax.set_xlabel('Distance from Recall (Turns)')
+    ax.set_ylabel('Factual Retention Rate (FRR %)')
+    ax.set_xticks(distances)
+    ax.legend(frameon=True, edgecolor='black')
+    
+    plt.savefig('plot_1_primacy_effect.png', dpi=300, bbox_inches='tight')
+    plt.close()
 
-# 3. FRR by Distance
-frr_dist_dfs = []
-for d in domains:
-    df = pd.read_csv(f'results/frr_by_distance_{d}.csv')
-    df['domain'] = d
-    frr_dist_dfs.append(df)
-frr_dist_all = pd.concat(frr_dist_dfs, ignore_index=True)
-dist_summary = frr_dist_all.groupby(['strategy', 'distance'])[['hits', 'total']].sum().reset_index()
-dist_summary['frr'] = dist_summary['hits'] / dist_summary['total']
+# ==========================================
+# PLOT 2: EFFICIENCY FRONTIER
+# ==========================================
+def plot_efficiency_frontier():
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    
+    strategies = ['Baseline', 'Hierarchical', 'RAG', 'Rolling Summary']
+    reduction = [0, 34.8, 55.6, 60.5]
+    frr = [40.6, 41.6, 37.9, 31.0]
+    api_calls = [15.1, 25.9, 15.1, 46.0]
+    colors = [color_base, color_hier, color_rag, color_roll]
 
-# --- Plotting ---
+    # Bubble size scale factor 
+    sizes = [calls * 12 for calls in api_calls]
 
-# Plot 1: The Primacy Effect (Line Plot)
-fig1, ax1 = plt.subplots(figsize=(10, 6))
-for strategy in dist_summary['strategy'].unique():
-    subset = dist_summary[dist_summary['strategy'] == strategy]
-    ax1.plot(subset['distance'], subset['frr'], marker='o', label=strategy, linewidth=2)
-ax1.set_title('The Primacy Effect: Factual Retention Rate Over Conversational Distance')
-ax1.set_xlabel('Distance from Recall (Turns)')
-ax1.set_ylabel('Factual Retention Rate (FRR)')
-ax1.set_xticks([4, 9, 14, 19, 24])
-ax1.legend()
-plt.tight_layout()
-plt.savefig('plot_1_primacy_effect.png')
-plt.close(fig1)
+    scatter = ax.scatter(reduction, frr, s=sizes, c=colors, alpha=0.8, edgecolors='black', linewidth=1.5)
 
-# Plot 2: Efficiency Frontier (Scatter Plot / Bubble Chart)
-# Note: Bubble size represents the number of LLM calls
-fig2, ax2 = plt.subplots(figsize=(10, 6))
-colors = ['blue', 'green', 'orange', 'red']
-for i, strategy in enumerate(eff_summary['strategy']):
-    ax2.scatter(eff_summary.loc[i, 'context_reduction_pct'], eff_summary.loc[i, 'is_correct_lenient'], 
-                s=eff_summary.loc[i, 'llm_calls_per_run']*20, label=strategy, alpha=0.7)
-    ax2.annotate(strategy, (eff_summary.loc[i, 'context_reduction_pct'], eff_summary.loc[i, 'is_correct_lenient']), 
-                 xytext=(10, 5), textcoords='offset points')
-ax2.set_title('Efficiency Frontier: Context Reduction vs. Factual Retention')
-ax2.set_xlabel('Context Reduction % (Higher is Better)')
-ax2.set_ylabel('Overall Factual Retention Rate (FRR)')
-ax2.grid(True)
-plt.tight_layout()
-plt.savefig('plot_2_efficiency_frontier.png')
-plt.close(fig2)
+    # Add labels with better positioning
+    for i, txt in enumerate(strategies):
+        if txt == 'Rolling Summary':
+            ax.annotate(txt, (reduction[i] - 1.5, frr[i] + 0.4), fontsize=10, horizontalalignment='right')
+        else:
+            ax.annotate(txt, (reduction[i] + 1.8, frr[i]), fontsize=10, verticalalignment='center')
 
-# Plot 3: Strategy vs. Domain Performance (Heatmap)
-fig3, ax3 = plt.subplots(figsize=(10, 6))
-sns.heatmap(frr_domain * 100, annot=True, fmt=".1f", cmap="YlGnBu", ax=ax3, cbar_kws={'label': 'FRR %'})
-ax3.set_title('Domain Brittleness: Factual Retention Rate (%) by Domain')
-ax3.set_xlabel('Domain')
-ax3.set_ylabel('Memory Strategy')
-plt.tight_layout()
-plt.savefig('plot_3_domain_heatmap.png')
-plt.close(fig3)
+    # ax.set_title('Efficiency Frontier: Context Reduction vs. Retention', pad=15)
+    ax.set_xlabel('Context Token Reduction (%)')
+    ax.set_ylabel('Overall Factual Retention Rate (FRR %)')
+    
+    ax.text(0.03, 0.05, 'Bubble Size = API Calls/Run', transform=ax.transAxes, 
+            bbox=dict(facecolor='white', edgecolor='black', alpha=0.9), fontsize=10)
 
-# Plot 4: The Cost of Memory (Grouped Bar Chart)
-fig4, ax4a = plt.subplots(figsize=(10, 6))
-x = np.arange(len(eff_summary['strategy']))
-width = 0.35
+    plt.savefig('plot_2_efficiency_frontier.png', dpi=300, bbox_inches='tight')
+    plt.close()
 
-ax4a.bar(x - width/2, eff_summary['avg_context_tokens'], width, label='Avg Context Tokens', color='skyblue')
-ax4a.set_ylabel('Average Context Tokens', color='skyblue')
-ax4a.tick_params(axis='y', labelcolor='skyblue')
-ax4a.set_xticks(x)
-ax4a.set_xticklabels(eff_summary['strategy'])
+# ==========================================
+# PLOT 3: DOMAIN HEATMAP
+# ==========================================
+def plot_domain_heatmap():
+    data = {
+        'Legal': [88.8, 84.8, 79.6, 70.4],
+        'Travel': [31.2, 35.2, 29.2, 21.2],
+        'Tech': [30.4, 29.2, 27.2, 19.6],
+        'Medical': [12.0, 17.2, 15.6, 12.8]
+    }
+    df = pd.DataFrame(data, index=['Baseline', 'Hierarchical', 'RAG', 'Rolling\nSummary'])
 
-ax4b = ax4a.twinx()
-ax4b.bar(x + width/2, eff_summary['llm_calls_per_run'], width, label='LLM Calls per Run', color='salmon')
-ax4b.set_ylabel('LLM Calls per Run', color='salmon')
-ax4b.tick_params(axis='y', labelcolor='salmon')
+    fig, ax = plt.subplots(figsize=(7, 6))
+    
+    sns.heatmap(df, annot=True, fmt=".1f", cmap="YlGnBu", cbar_kws={'label': 'FRR %'}, 
+                linewidths=2, linecolor='white', square=True, ax=ax, annot_kws={"size": 11})
 
-plt.title('The Cost of Memory: Context Tokens vs. LLM Calls')
-fig4.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax4a.transAxes)
-plt.tight_layout()
-plt.savefig('plot_4_memory_cost.png')
-plt.close(fig4)
+    ax.grid(False)
+    ax.tick_params(axis='both', which='both', length=0)
+
+    # ax.set_title('Domain Brittleness: Factual Retention Rate (%)', pad=15)
+    # ax.set_ylabel('Memory Strategy')
+    # ax.set_xlabel('Domain')
+    
+    plt.yticks(rotation=0)
+
+    plt.savefig('plot_3_domain_heatmap.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+# ==========================================
+# PLOT 4: THE COST OF MEMORY
+# ==========================================
+def plot_memory_cost():
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    
+    strategies = ['Baseline', 'Hierarchical', 'RAG', 'Rolling Summary']
+    tokens = [1242, 810, 551, 491]
+    api_calls = [15.1, 25.9, 15.1, 46.0]
+
+    x = np.arange(len(strategies))
+    width = 0.35
+
+    bars1 = ax1.bar(x - width/2, tokens, width, label='Avg Context Tokens', color='#3498db', edgecolor='black')
+    # ax1.set_ylabel('Average Context Tokens', color='#2980b9', fontweight='bold')
+    ax1.tick_params(axis='y', labelcolor='#2980b9')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(strategies)
+    ax1.grid(False) 
+
+    ax2 = ax1.twinx()
+    bars2 = ax2.bar(x + width/2, api_calls, width, label='LLM Calls per Run', color='#e74c3c', edgecolor='black')
+    # ax2.set_ylabel('LLM API Calls per Run', color='#c0392b', fontweight='bold')
+    ax2.tick_params(axis='y', labelcolor='#c0392b')
+
+    # Combined Legend
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper center', bbox_to_anchor=(0.5, 1.15), 
+               ncol=2, frameon=False)
+
+    # plt.title('The Cost of Memory: Tokens vs. API Calls', pad=35)
+    
+    plt.savefig('plot_4_memory_cost.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
+# ==========================================
+# EXECUTE ALL FUNCTIONS
+# ==========================================
+if __name__ == "__main__":
+    print("Generating Plot 1...")
+    plot_primacy_effect()
+    print("Generating Plot 2...")
+    plot_efficiency_frontier()
+    print("Generating Plot 3...")
+    plot_domain_heatmap()
+    print("Generating Plot 4...")
+    plot_memory_cost()
+    print("All plots successfully generated in Elsevier-compliant format!")

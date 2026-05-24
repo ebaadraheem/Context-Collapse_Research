@@ -159,15 +159,7 @@ def score_results_csv(
 def compute_frr(df: pd.DataFrame, threshold: str = "CORRECT") -> pd.DataFrame:
     """
     Compute Factual Retention Rate (FRR) per strategy × recall turn.
-
     FRR@K = hits_at_K / total_at_K
-
-    Args:
-        df        : Scored DataFrame with a 'judgment' column.
-        threshold : 'CORRECT' (strict) or 'PARTIAL' (lenient: CORRECT + PARTIAL = hit).
-
-    Returns:
-        DataFrame with columns: strategy, turn, hits, total, frr.
     """
     hit_values = {"CORRECT", "PARTIAL"} if threshold == "PARTIAL" else {"CORRECT"}
     df = df.copy()
@@ -224,11 +216,7 @@ def compute_compression_efficiency(
         parts = fname.replace("history_", "").replace(".jsonl", "").rsplit("_rep", 1)
         if len(parts) != 2:
             continue
-        strategy_part = parts[0]
-        # strategy is the last segment after the last underscore-separated script_id
-        # This is approximate — a more robust approach encodes strategy in filename differently.
-        # For now skip and rely on the CSV for strategy info.
-        pass  # left as a hook for future implementation
+        pass  # Filename parsing logic can be added here if needed to extract script_id, strategy_name, rep
 
     logger.info("compute_compression_efficiency: not fully implemented yet.")
     return pd.DataFrame(columns=["strategy", "turn", "avg_context_chars"])

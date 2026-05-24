@@ -1,15 +1,5 @@
-.gitignore
 .venv/
 __pycache__/
-scripts/
-test_scripts/
 .env
 .env.*
-*.csv
-*.json
-*.log
 models/
-results/
-plot*.png
-plot*.pdf
-legal_results/

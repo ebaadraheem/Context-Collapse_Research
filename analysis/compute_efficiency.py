@@ -1,23 +1,11 @@
 """
-compute_efficiency.py — Compute the efficiency table for the paper.
+compute_efficiency.py 
 
     Strategy        AUC-FRR    Avg context tokens    LLM calls/run
     baseline          0.92           2400                 13
     rolling_summary   0.71            380                 15
     hierarchical      0.79            520                 17
     rag               0.68            290                 13
-
-This script derives all three columns from data that already exists:
-    - AUC-FRR      : from the scored CSV (judgment column)
-    - Avg ctx tokens: from the JSONL history files (context size logged at recall turns)
-    - LLM calls/run : from the JSONL history files (call_count field logged per turn)
-
-IMPORTANT: This script requires run_benchmark.py to have been updated to log
-two extra fields in history JSONL entries at recall turns:
-    - "context_chars": int   (length of context string passed to LLM)
-    - "llm_calls_so_far": int (total generate() calls made so far in this run)
-
-See the patch to run_benchmark.py below for how to add these fields.
 
 Usage:
     python analysis/compute_efficiency.py \\
@@ -26,7 +14,7 @@ Usage:
 
 Outputs:
     results/efficiency_table_TIMESTAMP.csv
-    results/efficiency_table_TIMESTAMP.txt   (print-ready for paper)
+    results/efficiency_table_TIMESTAMP.txt   
 """
 
 from __future__ import annotations
@@ -120,8 +108,6 @@ def load_history_metrics(history_dir: str) -> pd.DataFrame:
     for fpath in sorted(files):
         fname = os.path.basename(fpath).replace("history_", "").replace(".jsonl", "")
 
-        # Parse filename: {script_id}_{strategy_name}_rep{rep}
-        # Strategy names may contain underscores so we split from the right on _rep
         parts = fname.rsplit("_rep", 1)
         if len(parts) != 2:
             print(f"[warn] Skipping unrecognised filename: {fname}")
@@ -133,8 +119,6 @@ def load_history_metrics(history_dir: str) -> pd.DataFrame:
             print(f"[warn] Cannot parse rep from: {fname}")
             continue
 
-        # Split script_id and strategy_name
-        # Strategy names: baseline, rolling_summary, hierarchical, rag
         strategy_names = ["rolling_summary", "hierarchical", "baseline", "rag"]
         strategy_name = None
         script_id = None
@@ -229,7 +213,7 @@ def build_efficiency_table(
     # Sort by AUC descending
     table = table.sort_values("auc_frr", ascending=False).reset_index(drop=True)
 
-    # Derived columns for paper
+  
     baseline_auc     = table.loc[table["strategy"] == "baseline", "auc_frr"].values
     baseline_ctx     = table.loc[table["strategy"] == "baseline", "avg_context_tokens"].values
 
@@ -250,12 +234,7 @@ def build_efficiency_table(
     return table
 
 
-# ---------------------------------------------------------------------------
-# Pretty print for paper
-# ---------------------------------------------------------------------------
-
 def print_table(df: pd.DataFrame) -> str:
-    """Format the efficiency table as a readable string for the paper."""
     lines = []
     lines.append(
         f"{'Strategy':<20} {'AUC-FRR':>8} {'Ctx tokens':>12} "

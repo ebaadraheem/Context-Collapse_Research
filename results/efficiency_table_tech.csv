@@ -1,0 +1,5 @@
+strategy,auc_frr,avg_context_tokens,llm_calls_per_run,retention_vs_baseline_pct,context_reduction_pct
+baseline,0.212,1242,15.1,100.0,0.0
+hierarchical,0.196,810,25.9,92.5,34.8
+rag,0.172,551,15.1,81.1,55.6
+rolling_summary,0.148,491,46.0,69.8,60.5

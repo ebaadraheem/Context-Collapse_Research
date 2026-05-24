@@ -41,7 +41,7 @@ SCRIPTS_DIR = args.scripts_dir
 RESULTS_DIR             = "results"
 HISTORY_DIR             = os.path.join(RESULTS_DIR, "histories")
 REPETITIONS             = 5                     
-SLEEP_BETWEEN_LLM_CALLS = 0.0                # seconds between each LLM call (Azure throttle)
+SLEEP_BETWEEN_LLM_CALLS = 0.0                # seconds between each LLM call 
 POST_RUN_SLEEP          = 0.0                   # extra pause between full strategy runs
 
 # ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ NO_CONTEXT_USER_TEMPLATE = """\
 Recall question: {question}"""
 
 # ---------------------------------------------------------------------------
-# Strategy registry (all four strategies enabled)
+# Strategy registry 
 # ---------------------------------------------------------------------------
 
 STRATEGIES: list[tuple[str, type, dict]] = [
@@ -170,16 +170,7 @@ def run_strategy(
                     "ground_truth":   turn_obj.get("ground_truth", []),
                     "agent_response": response,
                 })
-
-        else:
-            # Scripted assistant turn — add to memory only, no LLM call.
-            memory.add_message("assistant", content)
-            history.append({
-                "turn":      turn_num,
-                "role":      "assistant",
-                "content":   content,
-                "is_recall": False,
-            })
+                
 
     return results, history
 

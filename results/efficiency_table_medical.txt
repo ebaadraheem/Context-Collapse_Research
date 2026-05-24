@@ -1,0 +1,6 @@
+Strategy              AUC-FRR   Ctx tokens  Ctx reduction  Retention vs base  LLM calls/run
+──────────────────────────────────────────────────────────────────────────────────────────
+hierarchical            0.084          810          34.8%             110.5%           25.9
+rag                     0.084          551          55.6%             110.5%           15.1
+baseline                0.076         1242           0.0%             100.0%           15.1
+rolling_summary         0.076          491          60.5%             100.0%           46.0

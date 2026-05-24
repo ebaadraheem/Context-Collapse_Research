@@ -17,7 +17,7 @@ class BaselineMemory(MemoryBase):
         return "\n".join(f"{m['role']}: {m['content']}" for m in self.messages)
 
     def compress(self) -> None:
-        pass  # intentional no-op
+        pass  # No-op for BaselineMemory
 
     def reset(self) -> None:
         self.messages = []
