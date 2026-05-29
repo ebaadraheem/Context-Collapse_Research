@@ -38,10 +38,10 @@ def plot_primacy_effect():
     distances = [4, 9, 14, 19, 24]
     
     # Y-axis data 
-    baseline = [26.0, 29.0, 20.5, 24.0, 45.5]
-    hierarchical = [22.5, 27.5, 20.0, 23.5, 42.0]
-    rag = [27.5, 25.5, 13.5, 18.5, 34.5]
-    rolling = [18.0, 26.0, 19.5, 21.5, 26.5]
+    baseline = [32.0, 33.5, 43.5, 39.0, 55.0]
+    hierarchical = [32.0, 36.5, 42.5, 44.0, 53.0]
+    rag = [33.5, 33.5, 37.5, 40.5, 44.5]
+    rolling = [24.0, 30.0, 33.0, 27.5, 40.5]
 
     ax.plot(distances, baseline, marker='o', markersize=8, linewidth=2.5, color=color_base, label='Baseline')
     ax.plot(distances, hierarchical, marker='s', markersize=8, linewidth=2.5, color=color_hier, label='Hierarchical')
