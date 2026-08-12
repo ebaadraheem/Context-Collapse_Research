@@ -359,18 +359,6 @@ Includes:
 
 ---
 
-# Citation
-
-If you use this repository:
-
-```bibtex
-@article{raheem2026contextcollapse,
-title={Context Collapse in Long-Horizon Agents: Benchmarking Hierarchical Memory against RAG and Summarization},
-author={Raheem, Ebaad and Naseer, Danish and Mustafa, Ghulam},
-year={2026}
-}
-```
-
 ---
 
 # Future Directions
