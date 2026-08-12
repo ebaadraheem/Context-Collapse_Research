@@ -388,11 +388,3 @@ year={2026}
 This project is licensed under the **MIT License** — see the `LICENSE` file for details.
 
 ---
-
-## Author
-
-**Ebaad Raheem**
-Department of Information Technology
-University of the Punjab, Gujranwala Campus
-
-If this project helps your work, consider starring the repository.
