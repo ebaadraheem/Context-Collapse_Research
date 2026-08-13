@@ -215,7 +215,7 @@ Average factual retention across recall distances.
 Clone repository:
 
 ```bash
-git clone https://github.com/ebaadraheem/context_collapse.git
+git clone ...
 
 cd context_collapse
 ```
