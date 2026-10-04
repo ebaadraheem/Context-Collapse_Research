@@ -2,12 +2,12 @@
 python-dotenv>=1.0.0
 tqdm>=4.66.0
 pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
-# LLM clients
-groq>=0.9.0
-google-genai>=0.8.0
+# LLM client (Azure OpenAI deployments)
 openai>=1.0.0
 
 # Memory strategies
