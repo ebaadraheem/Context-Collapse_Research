@@ -1,6 +1,6 @@
 # Retention, Tokens, and Calls: Four Conversation-Memory Strategies
 
-Code, synthetic scripts, and logs for the paper *Token Savings Are Not Free: Retention and Call Costs of Four Memory Strategies* (pilot study).
+Code, synthetic scripts, and logs for the paper *Token Savings Are Not Free: Retention and Call Costs of Four Memory Strategies*.
 
 We compare four memory strategies with one model (GPT-4.1-mini) on 40 synthetic 25-turn scripts (10 each in Legal, Medical, Tech, Travel; 5 repetitions per script and strategy; 4,000 scored answers):
 
