@@ -1,378 +1,79 @@
-# Context Collapse in Long-Horizon Agents
+# Retention, Tokens, and Calls: Four Conversation-Memory Strategies
 
-### Benchmarking Hierarchical Memory against RAG and Summarization
+Code, synthetic scripts, and logs for the paper *Token Savings Are Not Free: Retention and Call Costs of Four Memory Strategies* (pilot study).
 
-> Controlled benchmark for evaluating memory architectures in long-horizon LLM conversations.
+We compare four memory strategies with one model (GPT-4.1-mini) on 40 synthetic 25-turn scripts (10 each in Legal, Medical, Tech, Travel; 5 repetitions per script and strategy; 4,000 scored answers):
 
----
+| Strategy | Context supplied to the model |
+|---|---|
+| Full history (`baseline`) | All previous messages |
+| Rolling summary (`rolling_summary`) | Bullet-point fact list plus unsummarized messages (re-summarized above 400 estimated tokens; summary output capped at 400 tokens) |
+| RAG (`rag`) | Retrieved sentence chunks plus the last 6 messages (all-MiniLM-L6-v2, Chroma, top 8 of 16 candidates, score 0.7·similarity + 0.3·1/(1+age)) |
+| Hierarchical (`hierarchical`) | Semantic fact list, episodic entries, recent raw messages (compression above 300 / 600 estimated tokens; both steps use the model) |
 
-## Overview
+## Important limitation: probe answerability
 
-Large Language Model (LLM) agents increasingly operate across long conversations, but maintaining factual consistency over time remains difficult.
+Each script has five recall probes (turns 5, 10, 15, 20, 25), 200 in total. For many probes, the target fact is **not stated in the user turns that the model sees** (only user turns are replayed; scripted assistant turns are not). A rule-based audit finds that this holds for only **40 of 200 probes** (Legal 24, Medical 3, Tech 8, Travel 5). The paper's main comparison uses these 40 probes; the other 160 mostly produce refusals under every strategy.
 
-This project investigates **context collapse** — the gradual degradation of factual recall as conversations become longer and memory systems compress, retrieve, or restructure context.
+* The per-probe audit is in `results/probe_validity_check.csv` (column `auto_label` is the rule's output; `author_label (present/absent)` is for manual checking).
+* Results by domain or recall distance are therefore **not** meaningful with the scripts as released.
+* If you reuse these scripts, regenerate the Medical, Tech, and Travel scripts so that every probed fact is stated in a user turn, and run the audit first.
 
-We benchmark four memory architectures under controlled conditions:
-
-* **Baseline Memory** — Full conversation history
-* **Hierarchical Memory** — Working + Episodic + Semantic memory
-* **RAG Memory** — Retrieval-Augmented Generation using vector search
-* **Rolling Summary Memory** — Incremental conversation summarization
-
-The benchmark evaluates:
-
-* Factual Retention Rate (FRR)
-* Context efficiency
-* Memory compression tradeoffs
-* LLM call overhead
-* Domain sensitivity
-* Long-horizon conversational robustness
-
-The implementation accompanies the research paper:
-
-**Context Collapse in Long-Horizon Agents: Benchmarking Hierarchical Memory against RAG and Summarization**
-
----
-
-## Key Findings
-
-* Hierarchical memory achieved **41.6% FRR**
-* Baseline retained **40.6% FRR**
-* Hierarchical memory reduced context usage by **~34.8%**
-* Rolling Summary reduced context size substantially but introduced additional degradation and higher API usage
-* Medical conversations were significantly more fragile than Legal and Technical domains
-* Strong evidence of **primacy effects** appeared across architectures
-
----
-
-# Project Structure
-
-```bash
-context_collapse/
-│
-├── analysis/                  # Evaluation and statistical analysis
-│   ├── compute_efficiency.py
-│   ├── get_plot_data.py
-│   ├── graphical_view.py
-│   ├── judge.py
-│   └── p_value.py
-│
-├── graphs/                    # Generated figures
-│   ├── plot_1_primacy_effect.png
-│   ├── plot_2_efficiency_frontier.png
-│   ├── plot_3_domain_heatmap.png
-│   └── plot_4_memory_cost.png
-│
-├── llm/                        # Azure OpenAI integration
-│   ├── llm_azure.py
-│   └── utils.py
-│
-├── memory_strategies/
-│   ├── base.py
-│   ├── baseline.py
-│   ├── hierarchical.py
-│   ├── rag.py
-│   └── rolling_summary.py
-│
-├── results/
-│   ├── histories/
-│   ├── efficiency_table_*.csv
-│   └── scored_results.csv
-│
-├── scripts/                    # Conversation benchmark datasets
-│   ├── all_legal.json
-│   ├── all_medical.json
-│   ├── all_tech.json
-│   └── all_travel.json
-│
-├── run_benchmark.py
-├── requirements.txt
-└── paper.pdf
-```
-
----
-
-# Memory Architectures
-
-## 1. Baseline Memory
-
-Stores the entire conversation history.
-
-### Characteristics
-
-* No compression
-* Maximum context growth
-* Reference upper-bound for recall
-
----
-
-## 2. Hierarchical Memory
-
-Multi-layer memory architecture.
-
-### Layers
-
-* Working Memory
-* Episodic Memory
-* Semantic Memory
-
-### Features
-
-* Controlled compression
-* Fact preservation
-* Structured memory updates
-* Lower token usage
-
----
-
-## 3. RAG Memory
-
-Retrieval-based memory using:
-
-* ChromaDB
-* Sentence Transformers
-
-### Retrieval Scoring
-
-Combines:
-
-* Semantic similarity
-* Recency weighting
-
----
-
-## 4. Rolling Summary Memory
-
-Continuously compresses dialogue into structured summaries.
-
-### Tradeoffs
-
-Pros:
-
-* Lower context size
-
-Cons:
-
-* Additional LLM calls
-* Information loss accumulation
-
----
-
-# Experimental Design
-
-## Domains
-
-Benchmark scripts span four domains:
-
-| Domain  | Focus                        |
-| ------- | ---------------------------- |
-| Legal   | Contracts, compliance        |
-| Medical | Healthcare facts             |
-| Tech    | Technical configurations     |
-| Travel  | Long conversational planning |
-
----
-
-## Benchmark Procedure
-
-1. Inject factual information early
-2. Continue conversation
-3. Ask delayed recall questions
-4. Retrieve memory context
-5. Evaluate correctness
-6. Repeat across strategies
-
----
-
-## Metrics
-
-### Factual Retention Rate (FRR)
-
-Measures recall accuracy.
-
-[
-FRR = Correct\ Recall / Total\ Recall
-]
-
----
-
-### AUC-FRR
-
-Average factual retention across recall distances.
-
----
-
-### Efficiency Metrics
-
-* Average context tokens
-* LLM calls
-* Compression overhead
-
----
-
-# Installation
-
-Clone repository:
-
-```bash
-git clone https://github.com/ebaadraheem/Context-Collapse_Research.git
-
-cd context_collapse
-```
-
-Create environment:
-
-```bash
-python -m venv venv
-```
-
-Activate:
-
-Linux / macOS:
-
-```bash
-source venv/bin/activate
-```
-
-Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-Install dependencies:
+## Reproducing the paper's tables (no API access needed)
 
 ```bash
 pip install -r requirements.txt
+python analysis/paper_tables.py
 ```
 
----
+This reads `scripts/all_*.json` and `results/scored_*.csv`, writes `results/probe_validity_check.csv`, and prints the numbers behind the audit and the results tables (script-level means, 95% bootstrap intervals from resampling scripts, seed 0, 4,000 resamples). Cost columns (context tokens, LLM calls) come from `results/efficiency_table_*.csv`, which are computed from the saved histories and are pooled over all domains (the four files are identical).
 
-# Environment Variables
+## Re-running the experiments (needs Azure OpenAI access)
 
-Create `.env`
+```bash
+cp .env.example .env   # then fill in the values below
+```
 
 ```env
 AZURE_OPENAI_ENDPOINT=
 AZURE_OPENAI_KEY=
-AZURE_DEPLOYMENT_NAME=
+AZURE_DEPLOYMENT_NAME=      # model that answers and compresses (GPT-4.1-mini in the paper)
 ```
-
----
-
-# Running Benchmarks
-
-Run default benchmark:
 
 ```bash
-python run_benchmark.py
+# 1. Run all strategies on a script folder (results go to results/)
+python run_benchmark.py --scripts_dir scripts --output_suffix run1
+
+# 2. Score the answers: exact match, then LLM judge
+#    NOTE: analysis/score_results.py reads the same AZURE_DEPLOYMENT_NAME variable.
+#    Set it to the judge deployment before this step.  <FILL IN: judge model and version used for the paper>
+python analysis/score_results.py results/benchmark_results_<timestamp>_run1.csv
+
+# 3. Cost columns from the saved histories
+python analysis/compute_efficiency.py --scored results/scored_<timestamp>.csv --history results/histories/
 ```
 
-Run custom script folder:
+Answers are generated with the model's default sampling settings, so re-running will not reproduce the released logs exactly.
 
-```bash
-python run_benchmark.py \
-    --scripts_dir scripts \
-    --output_suffix experiment_1
+## Data notes
+
+* `results/scored_<domain>.csv`: one row per answer (script, strategy, repetition, probe turn, question, response, ground truth, judgment). 800 runs → 4,000 rows.
+* `results/histories/`: saved conversation histories. 795 files are included (5 of the 800 runs have no saved history); cost figures are computed from these.
+* Judgments: `CORRECT`, `PARTIAL` (part of a compound fact recalled; see `analysis/judge.py`), `INCORRECT`. Strict retention counts `CORRECT`; lenient counts `CORRECT` + `PARTIAL`. "I don't know" answers are counted as incorrect and reported as refusals.
+* Context tokens are estimated as characters / 4 at the five probe turns; they are not billed token counts.
+* `analysis/p_value.py` is an earlier run-level paired t-test and is **not** used in the paper. The paper's intervals come from `analysis/paper_tables.py`.
+
+## Layout
+
+```
+analysis/        scoring, judge, efficiency, paper_tables.py (audit + paper numbers)
+llm/             Azure OpenAI client
+memory_strategies/   baseline, rolling_summary, rag, hierarchical
+scripts/         synthetic conversation scripts (all_<domain>.json)
+results/         logs, scored answers, efficiency tables, probe audit
+run_benchmark.py experiment runner
 ```
 
-Outputs:
+## License
 
-```bash
-results/
-├── histories/
-├── raw_results.csv
-└── scored_results.csv
-```
-
----
-
-# Running Analysis
-
-Compute efficiency:
-
-```bash
-python analysis/compute_efficiency.py \
-    --scored results/scored_results.csv \
-    --history results/histories/
-```
-
-Generate plots:
-
-```bash
-python analysis/graphical_view.py
-```
-
-Calculate significance:
-
-```bash
-python analysis/p_value.py
-```
-
-Judge responses:
-
-```bash
-python analysis/judge.py
-```
-
----
-
-# Example Research Questions
-
-* Does compression improve factual retention?
-* Does retrieval outperform summarization?
-* How expensive is memory compression?
-* Which domains collapse first?
-* Can hierarchical memory replace full context?
-
----
-
-# Results
-
-Generated outputs include:
-
-```bash
-results/
-graphs/
-histories/
-```
-
-Artifacts:
-
-* Efficiency tables
-* Recall statistics
-* Token usage
-* Visualization plots
-
----
-
-# Reproducibility
-
-The benchmark is designed for reproducible experimentation.
-
-Includes:
-
-* Fixed conversation scripts
-* Controlled recall positions
-* Consistent evaluation pipeline
-* Deterministic benchmarking structure
-
----
-
----
-
-# Future Directions
-
-* Multi-agent memory systems
-* Agentic long-term planning
-* Adaptive compression
-* Memory-aware orchestration
-* Production deployment benchmarks
-
----
-
-# License
-
-This project is licensed under the **MIT License** — see the `LICENSE` file for details.
-
----
+MIT (see `LICENSE`).
