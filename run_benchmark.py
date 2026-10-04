@@ -33,7 +33,7 @@ load_dotenv()
 # Configuration
 # ---------------------------------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--scripts_dir", default="test_scripts")
+parser.add_argument("--scripts_dir", default="scripts")
 parser.add_argument("--output_suffix", default="")
 args = parser.parse_args()
 
